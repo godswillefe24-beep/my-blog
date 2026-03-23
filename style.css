@@ -35,7 +35,7 @@ body {
 }
 
 body.dark-mode {
-  --bg-solid: #0f172a;
+  --bg-solid: #0f272a;
   --text: #e2e8f0;
   --muted: #94a3b8;
   --border: #334155;
