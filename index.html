@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>My Blog</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="shortcut icon" href="my phone.jpg" type="image/x-icon" />
+  </head>
+
+  <body>
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress"></div>
+
+    <!-- Back to Top Button -->
+    <button class="back-to-top" title="Back to top">
+      <span>⬆️</span>
+    </button>
+
+    <!-- Dark Mode Toggle -->
+    <button class="theme-toggle" title="Toggle dark mode">🌚</button>
+    <!-- Hero Section -->
+    <header class="site-header">
+      <div class="hero-gradient"></div>
+      <div class="header-content">
+        <h1 class="main-title">My Blog</h1>
+        <p class="tagline">Explore ideas, stories, and insights</p>
+        <div class="header-decoration">
+          <span class="dot dot-1"></span>
+          <span class="dot dot-2"></span>
+          <span class="dot dot-3"></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Featured Post -->
+      <section class="featured-section">
+        <h2 class="section-title">Latest Articles</h2>
+        <article class="featured-post">
+          <div class="featured-content">
+            <div class="post-badge">Featured</div>
+            <h2><a href="posts/post1.html">Welcome to my blog</a></h2>
+            <p class="post-meta">
+              <span class="meta-date">📅 November 26, 2025</span>
+              <span class="meta-reading">⏱️ 5 min read</span>
+            </p>
+            <p class="featured-excerpt">
+              Short intro: this is a sample post to get you started. Edit
+              <code>site/posts/post1.html</code> to customize it.
+            </p>
+            <div class="share-buttons">
+              <button
+                class="share-btn"
+                data-share="twitter"
+                title="Share on Twitter"
+              >
+                𝕏
+              </button>
+              <button
+                class="share-btn"
+                data-share="facebook"
+                title="Share on Facebook"
+              >
+                f
+              </button>
+              <button
+                class="share-btn"
+                data-share="linkedin"
+                title="Share on LinkedIn"
+              >
+                in
+              </button>
+              <button class="share-btn" data-share="copy" title="Copy link">
+                🔗
+              </button>
+            </div>
+            <a href="posts/post1.html" class="read-more">Read Full Article →</a>
+          </div>
+          <div class="featured-visual">
+            <div class="placeholder-image"></div>
+          </div>
+        </article>
+
+        <!-- COMMENTS SECTION -->
+        <section class="comments-section" data-post-id="1">
+          <h3>💬 Comments (<span class="comments-count">0</span>)</h3>
+
+          <div class="comments-list"></div>
+
+          <div class="comment-form">
+            <h4>Leave a Comment</h4>
+            <input
+              type="text"
+              class="comment-name"
+              placeholder="Your name..."
+            />
+            <textarea
+              class="comment-text"
+              placeholder="Share your thoughts..."
+              rows="4"
+            ></textarea>
+            <button class="comment-submit">Post Comment</button>
+          </div>
+        </section>
+      </section>
+
+      <div class="main-content">
+        <!-- Posts Grid -->
+        <section class="posts">
+          <div class="posts-header">
+            <h2 class="section-title">All Posts</h2>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="🔍 Search posts..."
+            />
+          </div>
+          <div class="filter-tags">
+            <button class="filter-btn active" data-filter="all">
+              All Posts
+            </button>
+            <button class="filter-btn" data-filter="Technology">
+              Technology
+            </button>
+            <button class="filter-btn" data-filter="Thoughts">Thoughts</button>
+            <button class="filter-btn" data-filter="Tutorial">Tutorial</button>
+          </div>
+          <div class="posts-grid">
+            <article class="post-card">
+              <div class="post-header">
+                <div class="post-category">Technology</div>
+              </div>
+              <h3><a href="posts/post1.html">Welcome to my blog</a></h3>
+              <p class="post-meta">November 26, 2025</p>
+              <p class="post-excerpt">
+                Short intro: this is a sample post to get you started.
+              </p>
+              <a href="posts/post1.html" class="post-link">Read More →</a>
+            </article>
+
+            <article class="post-card">
+              <div class="post-header">
+                <div class="post-category">Thoughts</div>
+              </div>
+              <h3><a href="#">Getting Started</a></h3>
+              <p class="post-meta">December 10, 2025</p>
+              <p class="post-excerpt">
+                Learn how to set up and configure your blog for maximum impact.
+              </p>
+              <a href="#" class="post-link">Read More →</a>
+            </article>
+
+            <article class="post-card">
+              <div class="post-header">
+                <div class="post-category">Tutorial</div>
+              </div>
+              <h3><a href="#">Advanced Customization</a></h3>
+              <p class="post-meta">January 15, 2026</p>
+              <p class="post-excerpt">
+                Dive deep into customizing your blog with advanced CSS and HTML
+                techniques.
+              </p>
+              <a href="#" class="post-link">Read More →</a>
+            </article>
+          </div>
+        </section>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <div class="sidebar-widget">
+            <h3>📊 Blog Analytics</h3>
+            <div class="analytics-stats">
+              <div class="stat">
+                <div class="stat-number" id="total-posts">3</div>
+                <div class="stat-label">Total Posts</div>
+              </div>
+              <div class="stat">
+                <div class="stat-number" id="total-likes">0</div>
+                <div class="stat-label">Total Likes</div>
+              </div>
+              <div class="stat">
+                <div class="stat-number" id="total-subscribers">0</div>
+                <div class="stat-label">Subscribers</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sidebar-widget">
+            <h3>About This Blog</h3>
+            <p>
+              A modern, minimal blog scaffold designed for writers and creators.
+              Deploy anywhere and customize effortlessly.
+            </p>
+          </div>
+
+          <div class="sidebar-widget">
+            <h3>Popular Tags</h3>
+            <div class="tags">
+              <a href="#" class="tag">Design</a>
+              <a href="#" class="tag">Code</a>
+              <a href="#" class="tag">Ideas</a>
+              <a href="#" class="tag">Writing</a>
+            </div>
+          </div>
+
+          <div class="sidebar-widget">
+            <h3>✉️ Subscribe</h3>
+            <input type="email" placeholder="Your email" class="email-input" />
+            <button class="subscribe-btn">Subscribe</button>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h4>About</h4>
+          <p>A modern blog built with simplicity in mind.</p>
+        </div>
+        <div class="footer-section">
+          <h4>Links</h4>
+          <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Posts</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h4>Follow</h4>
+          <ul>
+            <li><a href="#">X</a></li>
+            <li><a href="#">GitHub</a></li>
+            <li><a href="#">LinkedIn</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 — Efe. Built with ❤️</p>
+      </div>
+    </footer>
+  </body>
+  <script src="script.js"></script>
+</html>
