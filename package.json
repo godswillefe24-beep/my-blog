@@ -1,0 +1,20 @@
+{
+  "name": "my-blog",
+  "version": "1.0.0",
+  "description": "A modern blog with backend support",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["blog", "express"],
+  "author": "Efe",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "nodemailer": "^6.9.4",
+    "uuid": "^9.0.0"
+  }
+}
