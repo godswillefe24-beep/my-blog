@@ -1,4 +1,9 @@
 // ==========================================
+// API CONFIGURATION
+// ==========================================
+const API_BASE = 'http://localhost:3001/api';
+
+// ==========================================
 // CLIENT-SIDE DATABASE (LocalStorage)
 // ==========================================
 
@@ -20,7 +25,7 @@ class BlogDatabase {
         likes: {},
         postViews: {},
         darkMode: false,
-        likedItems: [], // Track which items user has liked
+        likedItems: [],
         saveTime: new Date().toLocaleString()
       };
       localStorage.setItem('blog_data', JSON.stringify(defaultData));
@@ -34,117 +39,6 @@ class BlogDatabase {
   saveData(data) {
     data.saveTime = new Date().toLocaleString();
     localStorage.setItem('blog_data', JSON.stringify(data));
-  }
-
-  addSubscriber(email) {
-    const data = this.getData();
-    if (!data.subscribers.includes(email)) {
-      data.subscribers.push(email);
-      this.saveData(data);
-      return true;
-    }
-    return false;
-  }
-
-  getSubscribers() {
-    return this.getData().subscribers;
-  }
-
-  addComment(postId, name, text) {
-    const data = this.getData();
-    if (!data.comments) {
-      data.comments = {};
-    }
-    if (!data.comments[postId]) {
-      data.comments[postId] = [];
-    }
-    const comment = {
-      id: Date.now(),
-      name: name,
-      text: text,
-      timestamp: new Date().toLocaleString(),
-      likes: 0
-    };
-    data.comments[postId].push(comment);
-    this.saveData(data);
-    return comment;
-  }
-
-  getComments(postId) {
-    return this.getData().comments?.[postId] || [];
-  }
-
-  likeComment(postId, commentId) {
-    const likedId = `comment_${postId}_${commentId}`;
-    const data = this.getData();
-    
-    // Check if already liked
-    if (data.likedItems?.includes(likedId)) {
-      const comment = data.comments?.[postId]?.find(c => c.id === commentId);
-      return { success: false, message: 'Already liked!', likes: comment?.likes || 0 };
-    }
-    
-    const comment = data.comments?.[postId]?.find(c => c.id === commentId);
-    if (comment) {
-      comment.likes = (comment.likes || 0) + 1;
-      
-      // Add to liked items
-      if (!data.likedItems) {
-        data.likedItems = [];
-      }
-      data.likedItems.push(likedId);
-      
-      this.saveData(data);
-      return { success: true, likes: comment.likes };
-    }
-    return { success: false, message: 'Comment not found!', likes: 0 };
-  }
-
-  isCommentLiked(postId, commentId) {
-    const data = this.getData();
-    return data.likedItems?.includes(`comment_${postId}_${commentId}`) || false;
-  }
-
-  likePost(postId) {
-    const likedId = `post_${postId}`;
-    const data = this.getData();
-    
-    // Check if already liked
-    if (data.likedItems?.includes(likedId)) {
-      return { success: false, message: 'Already liked!', likes: data.likes[postId] || 0 };
-    }
-    
-    if (!data.likes[postId]) {
-      data.likes[postId] = 0;
-    }
-    data.likes[postId]++;
-    
-    // Add to liked items
-    if (!data.likedItems) {
-      data.likedItems = [];
-    }
-    data.likedItems.push(likedId);
-    
-    this.saveData(data);
-    return { success: true, likes: data.likes[postId] };
-  }
-
-  getLikes(postId) {
-    return this.getData().likes[postId] || 0;
-  }
-
-  isPostLiked(postId) {
-    const data = this.getData();
-    return data.likedItems?.includes(`post_${postId}`) || false;
-  }
-
-  trackPostView(postId) {
-    const data = this.getData();
-    if (!data.postViews[postId]) {
-      data.postViews[postId] = 0;
-    }
-    data.postViews[postId]++;
-    this.saveData(data);
   }
 
   setDarkMode(enabled) {
@@ -294,88 +188,74 @@ document.querySelectorAll('.share-btn').forEach(btn => {
 // ANALYTICS DASHBOARD
 // ==========================================
 
-function updateAnalytics() {
-  const data = db.getData();
-  const totalLikes = Object.values(data.likes).reduce((a, b) => a + b, 0);
-  const totalSubscribers = data.subscribers.length;
+async function updateAnalytics() {
+  try {
+    const response = await fetch(`${API_BASE}/analytics`);
+    if (response.ok) {
+      const analytics = await response.json();
+      
+      const postsElement = document.getElementById('total-posts');
+      const likesElement = document.getElementById('total-likes');
+      const subscribersElement = document.getElementById('total-subscribers');
 
-  const postsElement = document.getElementById('total-posts');
-  const likesElement = document.getElementById('total-likes');
-  const subscribersElement = document.getElementById('total-subscribers');
-
-  if (postsElement) postsElement.textContent = document.querySelectorAll('.post-card').length;
-  if (likesElement) likesElement.textContent = totalLikes;
-  if (subscribersElement) subscribersElement.textContent = totalSubscribers;
+      if (postsElement) postsElement.textContent = document.querySelectorAll('.post-card').length;
+      if (likesElement) likesElement.textContent = analytics.totalLikes;
+      if (subscribersElement) subscribersElement.textContent = analytics.totalSubscribers;
+    }
+  } catch (error) {
+    console.log('Analytics API not available, using local data');
+    const data = db.getData();
+    const totalLikes = Object.values(data.likes).reduce((a, b) => a + b, 0);
+    
+    const likesElement = document.getElementById('total-likes');
+    if (likesElement) likesElement.textContent = totalLikes;
+  }
 }
 
 updateAnalytics();
 
 // Update analytics when data changes
-setInterval(updateAnalytics, 2000);
+setInterval(updateAnalytics, 5000);
 
 // ==========================================
 // COMMENTS SECTION FUNCTIONALITY
 // ==========================================
 
-function loadComments(postId) {
+async function loadComments(postId) {
   const commentsSection = document.querySelector(`[data-post-id="${postId}"]`);
   if (!commentsSection) return;
 
   const commentsList = commentsSection.querySelector('.comments-list');
   const commentsCount = commentsSection.querySelector('.comments-count');
-  const comments = db.getComments(postId);
-
-  commentsCount.textContent = comments.length;
-
-  if (comments.length === 0) {
-    commentsList.innerHTML = '<div class="no-comments">Be the first to comment! 💭</div>';
-    return;
-  }
-
-  commentsList.innerHTML = comments.map(comment => `
-    <div class="comment-item" data-comment-id="${comment.id}">
-      <div class="comment-header">
-        <div>
-          <span class="comment-author">👤 ${escapeHtml(comment.name)}</span>
-          <span class="comment-time">${comment.timestamp}</span>
-        </div>
-        ${comment.name === 'Admin' ? '<span class="comment-badge">Admin</span>' : ''}
-      </div>
-      <p class="comment-text">${escapeHtml(comment.text)}</p>
-      <div class="comment-actions">
-        <button class="comment-like" data-comment-id="${comment.id}" ${db.isCommentLiked(postId, comment.id) ? 'disabled' : ''} ${db.isCommentLiked(postId, comment.id) ? 'style="opacity: 0.6; cursor: not-allowed;"' : ''}>
-          👍 <span class="like-count">${comment.likes || 0}</span>
-        </button>
-      </div>
-    </div>
-  `).join('');
-
-  // Add like functionality to comments
-  commentsList.querySelectorAll('.comment-like').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const commentId = parseInt(this.dataset.commentId);
-      const result = db.likeComment(postId, commentId);
+  
+  try {
+    const response = await fetch(`${API_BASE}/comments/${postId}`);
+    if (response.ok) {
+      const comments = await response.json();
       
-      if (result.success) {
-        this.querySelector('.like-count').textContent = result.likes;
-        this.style.color = 'var(--accent)';
-        this.style.fontWeight = '700';
-        this.disabled = true;
-        
-        setTimeout(() => {
-          this.style.color = '';
-          this.style.fontWeight = '';
-        }, 500);
-        
-        showNotification(`👍 You liked this comment!`, 'success');
-      } else {
-        this.disabled = true;
-        this.style.opacity = '0.6';
-        this.style.cursor = 'not-allowed';
-        showNotification('✓ Already liked this comment!', 'info');
+      commentsCount.textContent = comments.length;
+
+      if (comments.length === 0) {
+        commentsList.innerHTML = '<div class="no-comments">Be the first to comment! 💭</div>';
+        return;
       }
-    });
-  });
+
+      commentsList.innerHTML = comments.map(comment => `
+        <div class="comment-item" data-comment-id="${comment.id}">
+          <div class="comment-header">
+            <div>
+              <span class="comment-author">👤 ${escapeHtml(comment.name)}</span>
+              <span class="comment-time">${new Date(comment.timestamp).toLocaleString()}</span>
+            </div>
+          </div>
+          <p class="comment-text">${escapeHtml(comment.text)}</p>
+        </div>
+      `).join('');
+    }
+  } catch (error) {
+    console.log('Comments API not available');
+    commentsList.innerHTML = '<div class="no-comments">Comments feature temporarily unavailable</div>';
+  }
 }
 
 // Handle comment submission
@@ -389,7 +269,7 @@ document.querySelectorAll('.comments-section').forEach(section => {
   loadComments(postId);
 
   if (submitBtn) {
-    submitBtn.addEventListener('click', function() {
+    submitBtn.addEventListener('click', async function() {
       const name = nameInput.value.trim();
       const text = textInput.value.trim();
 
@@ -410,26 +290,30 @@ document.querySelectorAll('.comments-section').forEach(section => {
         return;
       }
 
-      // Add comment to database
-      const comment = db.addComment(postId, name, text);
-      
-      // Clear form
-      nameInput.value = '';
-      textInput.value = '';
+      try {
+        const response = await fetch(`${API_BASE}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ postId, name, text })
+        });
 
-      // Reload comments
-      loadComments(postId);
+        if (response.ok) {
+          // Clear form
+          nameInput.value = '';
+          textInput.value = '';
 
-      // Show notification
-      showNotification(`✓ Comment posted by ${name}!`, 'success');
+          // Reload comments
+          loadComments(postId);
 
-      // Scroll to new comment
-      setTimeout(() => {
-        const newComment = section.querySelector('[data-comment-id="' + comment.id + '"]');
-        if (newComment) {
-          newComment.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          // Show notification
+          showNotification(`✓ Comment posted by ${name}!`, 'success');
+        } else {
+          showNotification('Failed to post comment', 'error');
         }
-      }, 300);
+      } catch (error) {
+        showNotification('Failed to post comment - API unavailable', 'error');
+        console.error('Error posting comment:', error);
+      }
     });
 
     // Allow Enter to submit (Ctrl+Enter for multiline)
@@ -707,9 +591,36 @@ if (emailInput) {
 }
 
 // ============================================
+// EMAIL INPUT INTERACTIONS
+// ============================================
+if (emailInput) {
+  emailInput.addEventListener('focus', function() {
+    this.style.borderColor = 'var(--accent)';
+    this.style.boxShadow = '0 0 0 4px rgba(99, 102, 241, 0.1)';
+    this.style.background = 'linear-gradient(to right, #fff, rgba(99, 102, 241, 0.02))';
+  });
+  
+  emailInput.addEventListener('blur', function() {
+    this.style.borderColor = 'var(--border)';
+    this.style.boxShadow = 'none';
+    this.style.background = 'white';
+  });
+  
+  emailInput.addEventListener('input', function() {
+    const value = this.value;
+    if (value.length > 0) {
+      this.style.borderColor = 'var(--accent-light)';
+    } else {
+      this.style.borderColor = 'var(--border)';
+    }
+  });
+}
+
+// ============================================
 // SUBSCRIBE BUTTON FUNCTIONALITY
 // ============================================
 const subscribeBtn = document.querySelector('.subscribe-btn');
+const emailInput = document.querySelector('.email-input');
 
 if (subscribeBtn && emailInput) {
   subscribeBtn.addEventListener('mouseenter', function() {
@@ -732,7 +643,7 @@ if (subscribeBtn && emailInput) {
   });
 }
 
-function handleSubscribe() {
+async function handleSubscribe() {
   const email = emailInput.value.trim();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   
@@ -743,22 +654,37 @@ function handleSubscribe() {
     showNotification('Please enter a valid email', 'error');
     emailInput.style.borderColor = '#ef4444';
   } else {
-    if (db.addSubscriber(email)) {
-      showNotification(`✓ Welcome! ${db.getSubscribers().length} subscribers now!`, 'success');
-      emailInput.style.borderColor = 'var(--border)';
-      emailInput.value = '';
-      
-      // Celebration animation
-      subscribeBtn.style.transform = 'scale(0.9) rotate(-5deg)';
-      subscribeBtn.textContent = '✓ Subscribed';
-      subscribeBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-      setTimeout(() => {
-        subscribeBtn.style.transform = 'scale(1) rotate(0deg)';
-        subscribeBtn.textContent = 'Subscribe';
-        subscribeBtn.style.background = '';
-      }, 2000);
-    } else {
-      showNotification('Already subscribed with this email!', 'info');
+    try {
+      const response = await fetch(`${API_BASE}/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      if (response.ok) {
+        showNotification(`✓ Welcome! Successfully subscribed!`, 'success');
+        emailInput.style.borderColor = 'var(--border)';
+        emailInput.value = '';
+        
+        // Celebration animation
+        subscribeBtn.style.transform = 'scale(0.9) rotate(-5deg)';
+        subscribeBtn.textContent = '✓ Subscribed';
+        subscribeBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        setTimeout(() => {
+          subscribeBtn.style.transform = 'scale(1) rotate(0deg)';
+          subscribeBtn.textContent = 'Subscribe';
+          subscribeBtn.style.background = '';
+        }, 2000);
+        
+        // Refresh analytics
+        updateAnalytics();
+      } else {
+        const error = await response.json();
+        showNotification(error.error || 'Already subscribed with this email!', 'info');
+      }
+    } catch (error) {
+      showNotification('Subscription failed - please try again', 'error');
+      console.error('Error subscribing:', error);
     }
   }
 }
