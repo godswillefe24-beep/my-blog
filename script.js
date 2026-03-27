@@ -51,6 +51,15 @@ class BlogDatabase {
     return this.getData().darkMode;
   }
 
+  getLikes(postId) {
+    return this.getData().likes[postId] || 0;
+  }
+
+  isPostLiked(postId) {
+    const data = this.getData();
+    return data.likedItems?.includes(`post_${postId}`) || false;
+  }
+
   exportData() {
     return JSON.stringify(this.getData(), null, 2);
   }
@@ -343,8 +352,11 @@ function escapeHtml(text) {
 // ============================================
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   anchor.addEventListener('click', function (e) {
+    const href = this.getAttribute('href');
+    if (href === '#') return; // Skip empty anchors
+    
     e.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
+    const target = document.querySelector(href);
     if (target) {
       target.scrollIntoView({
         behavior: 'smooth',
@@ -620,7 +632,6 @@ if (emailInput) {
 // SUBSCRIBE BUTTON FUNCTIONALITY
 // ============================================
 const subscribeBtn = document.querySelector('.subscribe-btn');
-const emailInput = document.querySelector('.email-input');
 
 if (subscribeBtn && emailInput) {
   subscribeBtn.addEventListener('mouseenter', function() {
