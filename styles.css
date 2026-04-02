@@ -893,6 +893,13 @@ body.dark-mode {
   animation: moveGrid 10s linear infinite;
 }
 
+.featured-image {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
 @keyframes moveGrid {
   0% {
     transform: translate(0, 0);
