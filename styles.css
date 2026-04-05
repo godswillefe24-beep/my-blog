@@ -1,19 +1,19 @@
 :root {
-  --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --bg-solid: #0a0e27;
-  --card: #1e293b;
+  --bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  --bg-solid: #f1f5f9;
+  --card: #ffffff;
   --accent: #3b82f6;
   --accent-light: #60a5fa;
   --accent-dark: #1e40af;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --muted: #94a3b8;
-  --text: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --border: #334155;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  --shadow-hover: 0 20px 40px rgba(59, 130, 246, 0.2);
+  --muted: #64748b;
+  --text: #1e293b;
+  --text-secondary: #475569;
+  --border: #e2e8f0;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 20px 40px rgba(59, 130, 246, 0.15);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -43,11 +43,13 @@ body {
 }
 
 body.dark-mode {
+  --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   --bg-solid: #0a0e27;
+  --card: #1e293b;
   --text: #f1f5f9;
   --text-secondary: #cbd5e1;
   --border: #334155;
-  --card: #1e293b;
+  --muted: #94a3b8;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
@@ -291,7 +293,7 @@ body.dark-mode {
 .site-header {
   position: relative;
   overflow: hidden;
-  padding: 80px 16px;
+  padding: 40px 16px;
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   color: white;
   text-align: center;

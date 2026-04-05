@@ -895,47 +895,6 @@ style.textContent = `
   .post-card, .sidebar-widget, .featured-post {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-
-  .like-container {
-    margin: 15px 0 10px 0;
-  }
-  
-  .like-btn {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .like-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-  }
-  
-  .like-btn:active {
-    transform: scale(0.95);
-  }
-  
-  .like-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  
-  .like-btn.liked {
-    animation: heartBeat 0.5s ease;
-  }
-  
-  .like-btn .heart {
-    font-size: 1.1em;
-  }
   
   * {
     transition: box-shadow 0.3s ease, transform 0.3s ease, color 0.3s ease;
