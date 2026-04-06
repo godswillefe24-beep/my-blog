@@ -94,6 +94,30 @@ class BlogDatabase {
 const db = new BlogDatabase();
 
 // ==========================================
+// SERVICE WORKER REGISTRATION (PWA)
+// ==========================================
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => {
+        console.log('✓ Service Worker registered successfully', reg);
+        
+        // Check for updates
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showNotification('New version available! Refresh to update.', 'info');
+            }
+          });
+        });
+      })
+      .catch(error => console.log('Service Worker registration failed:', error));
+  });
+}
+
+// ==========================================
 // DARK MODE TOGGLE
 // ==========================================
 
