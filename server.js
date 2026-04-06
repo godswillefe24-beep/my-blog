@@ -189,6 +189,114 @@ app.post('/api/subscribe', async (req, res) => {
 });
 
 // Start server
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_TOKEN = 'essence-admin-token-2026';
+
+// ==========================================
+// ADMIN AUTHENTICATION
+// ==========================================
+
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  
+  if (password === ADMIN_PASSWORD) {
+    res.json({ token: ADMIN_TOKEN });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
+// Middleware to check admin token
+function verifyAdmin(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(' ')[1];
+  
+  if (token === ADMIN_TOKEN) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+// ==========================================
+// ADMIN: POSTS MANAGEMENT
+// ==========================================
+
+app.post('/api/admin/posts', verifyAdmin, (req, res) => {
+  try {
+    const { id, title, category, content } = req.body;
+    // In a real app, save to database
+    res.json({ success: true, id });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save post' });
+  }
+});
+
+app.delete('/api/admin/posts/:id', verifyAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    // In a real app, delete from database
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+// ==========================================
+// ADMIN: SUBSCRIBERS MANAGEMENT
+// ==========================================
+
+app.get('/api/admin/subscribers', verifyAdmin, (req, res) => {
+  try {
+    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
+    const subscribersData = subscribers.map((email, index) => ({
+      email,
+      date: new Date().toISOString(),
+      id: index
+    }));
+    res.json(subscribersData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch subscribers' });
+  }
+});
+
+app.delete('/api/admin/subscribers/:id', verifyAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
+    subscribers.splice(parseInt(id), 1);
+    fs.writeFileSync(subscribersFile, JSON.stringify(subscribers, null, 2));
+    
+    // Update analytics
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete subscriber' });
+  }
+});
+
+// ==========================================
+// ADMIN: SETTINGS
+// ==========================================
+
+app.post('/api/admin/settings', verifyAdmin, (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (password) {
+      // In production, store hashed password in .env or database
+      process.env.ADMIN_PASSWORD = password;
+      res.json({ success: true });
+    } else {
+      res.status(400).json({ error: 'No settings to update' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Blog server running on http://localhost:${PORT}`);
+  console.log(`Admin dashboard: http://localhost:${PORT}/admin.html`);
+  console.log(`Default admin password: ${ADMIN_PASSWORD}`);
 });
