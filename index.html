@@ -33,64 +33,18 @@
           viewBox="0 0 100 100"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <!-- Background circle -->
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            opacity="0.3"
-          />
+          <!-- Background circles -->
+          <circle cx="50" cy="50" r="45" fill="currentColor" opacity="0.1" />
+          <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3" />
+          <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2" />
 
-          <!-- Tech/Blog icon - stylized pen and circuit board hybrid -->
-          <g transform="translate(50, 50)">
-            <!-- Pen stroke -->
-            <path
-              d="M -15 15 Q 0 -15 15 -15"
-              stroke="currentColor"
-              stroke-width="2.5"
-              fill="none"
-              stroke-linecap="round"
-            />
+          <!-- Arc path -->
+          <path d="M 35 55 Q 50 35 65 55" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" />
 
-            <!-- Circuit nodes -->
-            <circle cx="-15" cy="15" r="2.5" fill="currentColor" />
-            <circle cx="0" cy="-15" r="2.5" fill="currentColor" />
-            <circle cx="15" cy="-15" r="2.5" fill="currentColor" />
-
-            <!-- Connection lines -->
-            <line
-              x1="-15"
-              y1="15"
-              x2="0"
-              y2="-15"
-              stroke="currentColor"
-              stroke-width="1.5"
-              opacity="0.6"
-            />
-            <line
-              x1="0"
-              y1="-15"
-              x2="15"
-              y2="-15"
-              stroke="currentColor"
-              stroke-width="1.5"
-              opacity="0.6"
-            />
-
-            <!-- Bottom accent -->
-            <rect
-              x="-12"
-              y="12"
-              width="24"
-              height="2"
-              rx="1"
-              fill="currentColor"
-              opacity="0.6"
-            />
-          </g>
+          <!-- Node circles -->
+          <circle cx="35" cy="55" r="2.5" fill="currentColor" />
+          <circle cx="50" cy="35" r="2.5" fill="currentColor" />
+          <circle cx="65" cy="55" r="2.5" fill="currentColor" />
         </svg>
         <h1 class="main-title">Essence</h1>
         <p class="tagline">Explore ideas, stories, and insights</p>
@@ -147,7 +101,11 @@
             <a href="posts/post2.html" class="read-more">Read Full Article →</a>
           </div>
           <div class="featured-visual">
-            <img src="phone.jpg" alt="Blog preview" class="featured-image" />
+            <img
+              src="cyber-security.jpg"
+              alt="Blog preview"
+              class="featured-image"
+            />
           </div>
         </article>
 
