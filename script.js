@@ -79,7 +79,10 @@ class BlogDatabase {
     }
     
     this.saveData(data);
-    return data.likes[postId];
+    return {
+      success: true,
+      likes: data.likes[postId]
+    };
   }
 
   exportData() {
