@@ -60,6 +60,28 @@ class BlogDatabase {
     return data.likedItems?.includes(`post_${postId}`) || false;
   }
 
+  likePost(postId) {
+    const data = this.getData();
+    const itemId = `post_${postId}`;
+    
+    if (!data.likedItems) {
+      data.likedItems = [];
+    }
+    
+    if (data.likedItems.includes(itemId)) {
+      // Unlike
+      data.likedItems = data.likedItems.filter(id => id !== itemId);
+      data.likes[postId] = (data.likes[postId] || 1) - 1;
+    } else {
+      // Like
+      data.likedItems.push(itemId);
+      data.likes[postId] = (data.likes[postId] || 0) + 1;
+    }
+    
+    this.saveData(data);
+    return data.likes[postId];
+  }
+
   exportData() {
     return JSON.stringify(this.getData(), null, 2);
   }
