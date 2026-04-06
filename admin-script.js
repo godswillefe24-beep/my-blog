@@ -5,42 +5,62 @@ console.log('Admin script loading...');
 const API_BASE = 'http://localhost:3001/api';
 const ADMIN_PASSWORD = 'admin123';
 
-// Initialize immediately
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM ready, initializing...');
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+  initAdmin();
+}
+
+function initAdmin() {
+  console.log('Initializing admin dashboard...');
   
-  // Login handler
+  // Get elements
   const loginForm = document.getElementById('login-form');
+  const loginScreen = document.getElementById('login-screen');
+  const dashboardScreen = document.getElementById('dashboard-screen');
+  
+  console.log('Elements:', {
+    loginForm: !!loginForm,
+    loginScreen: !!loginScreen,
+    dashboardScreen: !!dashboardScreen
+  });
+  
+  // Login form handler
   if (loginForm) {
-    console.log('Login form found, adding listener');
     loginForm.addEventListener('submit', function(e) {
       e.preventDefault();
-      console.log('Login form submitted');
+      console.log('Form submitted');
       
-      const password = document.getElementById('admin-password').value;
-      console.log('Password entered:', password === ADMIN_PASSWORD ? 'CORRECT' : 'WRONG');
+      const passwordInput = document.getElementById('admin-password');
+      const password = passwordInput ? passwordInput.value : '';
+      
+      console.log('Password check:', password, '==', ADMIN_PASSWORD, '?', password === ADMIN_PASSWORD);
       
       if (password === ADMIN_PASSWORD) {
-        console.log('Password correct, showing dashboard');
-        const loginScreen = document.getElementById('login-screen');
-        const dashboardScreen = document.getElementById('dashboard-screen');
+        console.log('Password correct! Switching screens...');
         
+        // Hide login, show dashboard
         if (loginScreen) {
+          console.log('Hiding login screen');
           loginScreen.classList.add('hidden');
-          console.log('Login screen hidden');
+          loginScreen.style.display = 'none';
         }
         if (dashboardScreen) {
+          console.log('Showing dashboard screen');
           dashboardScreen.classList.remove('hidden');
-          console.log('Dashboard screen shown');
+          dashboardScreen.style.display = 'grid';
         }
         
-        alert('Login successful!');
+        alert('✅ Login successful!');
       } else {
-        alert('Invalid password. Try: admin123');
+        console.log('Password incorrect');
+        alert('❌ Invalid password. Try: admin123');
+        if (passwordInput) passwordInput.value = '';
       }
     });
   } else {
-    console.error('Login form NOT found!');
+    console.error('Login form not found!');
   }
   
   // Logout handler
@@ -48,35 +68,48 @@ document.addEventListener('DOMContentLoaded', function() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', function() {
       console.log('Logout clicked');
-      const loginScreen = document.getElementById('login-screen');
-      const dashboardScreen = document.getElementById('dashboard-screen');
       
-      if (loginScreen) loginScreen.classList.remove('hidden');
-      if (dashboardScreen) dashboardScreen.classList.add('hidden');
+      if (loginScreen) {
+        loginScreen.classList.remove('hidden');
+        loginScreen.style.display = 'flex';
+      }
+      if (dashboardScreen) {
+        dashboardScreen.classList.add('hidden');
+        dashboardScreen.style.display = 'none';
+      }
       
-      document.getElementById('admin-password').value = '';
+      const passwordInput = document.getElementById('admin-password');
+      if (passwordInput) passwordInput.value = '';
     });
   }
   
   // Tab navigation
-  document.querySelectorAll('.nav-item').forEach(item => {
+  const navItems = document.querySelectorAll('.nav-item');
+  console.log('Nav items found:', navItems.length);
+  
+  navItems.forEach(item => {
     item.addEventListener('click', function() {
-      const tab = this.dataset.tab;
-      console.log('Tab clicked:', tab);
+      const tabName = this.dataset.tab;
+      console.log('Tab clicked:', tabName);
       
-      // Remove active from all
-      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      // Remove active from all nav items and tabs
+      navItems.forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
       
       // Add active to selected
       this.classList.add('active');
-      const tabContent = document.getElementById(tab);
-      if (tabContent) tabContent.classList.add('active');
+      const tabContent = document.getElementById(tabName);
+      if (tabContent) {
+        tabContent.classList.add('active');
+      }
     });
   });
   
-  // Modal close buttons
-  document.querySelectorAll('.modal-close, .modal-close-btn').forEach(btn => {
+  // Modal controls
+  const closeButtons = document.querySelectorAll('.modal-close, .modal-close-btn');
+  closeButtons.forEach(btn => {
     btn.addEventListener('click', function() {
       const modal = document.getElementById('post-modal');
       if (modal) modal.classList.remove('active');
@@ -92,5 +125,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  console.log('Initialization complete');
-});
+  console.log('Admin dashboard initialized ✅');
+}
