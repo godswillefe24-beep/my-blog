@@ -476,12 +476,20 @@ document.querySelectorAll('.post-card').forEach((card, index) => {
         this.querySelector('.heart').textContent = '♥';
         this.disabled = true;
         
+        // Update analytics on backend
+        fetch(`${API_BASE}/analytics/like`, { method: 'POST' }).catch(() => {
+          console.log('Backend not available');
+        });
+        
         setTimeout(() => {
           this.classList.remove('liked');
           this.querySelector('.heart').textContent = '♡';
         }, 500);
         
         showNotification(`❤️ You liked this! (${result.likes} ${result.likes === 1 ? 'like' : 'likes'})`, 'success');
+        
+        // Refresh analytics
+        updateAnalytics();
       } else {
         this.disabled = true;
         this.style.opacity = '0.5';
