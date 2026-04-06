@@ -26,11 +26,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const dashboardScreen = document.getElementById('dashboard-screen');
         
         if (loginScreen) {
-          loginScreen.style.display = 'none';
+          loginScreen.classList.add('hidden');
           console.log('Login screen hidden');
         }
         if (dashboardScreen) {
-          dashboardScreen.style.display = 'block';
+          dashboardScreen.classList.remove('hidden');
           console.log('Dashboard screen shown');
         }
         
@@ -51,8 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const loginScreen = document.getElementById('login-screen');
       const dashboardScreen = document.getElementById('dashboard-screen');
       
-      if (loginScreen) loginScreen.style.display = 'flex';
-      if (dashboardScreen) dashboardScreen.style.display = 'none';
+      if (loginScreen) loginScreen.classList.remove('hidden');
+      if (dashboardScreen) dashboardScreen.classList.add('hidden');
       
       document.getElementById('admin-password').value = '';
     });

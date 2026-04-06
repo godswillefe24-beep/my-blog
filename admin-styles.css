@@ -37,6 +37,20 @@ body {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+#login-screen.hidden {
+  display: none;
+}
+
+#dashboard-screen {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 250px 1fr;
+}
+
+#dashboard-screen.hidden {
+  display: none;
+}
+
 .login-container {
   width: 100%;
   max-width: 400px;
