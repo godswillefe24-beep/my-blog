@@ -33,6 +33,15 @@
           🌙
         </button>
       </div>
+      <div class="post-toolbar">
+        <button
+          id="image-btn"
+          class="toolbar-btn"
+          title="Insert image from gallery"
+        >
+          🖼️ Insert Image
+        </button>
+      </div>
     </header>
 
     <main class="container">
@@ -111,6 +120,18 @@
         </p>
       </aside>
     </main>
+
+    <!-- Image Gallery Modal -->
+    <div id="image-gallery-modal" class="modal-overlay hidden">
+      <div class="gallery-modal-content">
+        <div class="gallery-modal-header">
+          <h2>Insert Image</h2>
+          <button class="modal-close-btn">&times;</button>
+        </div>
+        <div id="gallery-list" class="gallery-modal-images"></div>
+        <p id="gallery-loading" class="gallery-message">Loading images...</p>
+      </div>
+    </div>
 
     <footer class="site-footer">
       <div class="footer-content">

@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import nodemailer from 'nodemailer';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,6 +18,41 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
+
+// ==========================================
+// IMAGE UPLOAD SETUP
+// ==========================================
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `${uuidv4()}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images allowed.'));
+    }
+  }
+});
+
+app.use('/uploads', express.static(uploadsDir));
 
 // Database file paths
 const commentsFile = path.join(__dirname, 'data', 'comments.json');
@@ -292,6 +328,68 @@ app.post('/api/admin/settings', verifyAdmin, (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+// ==========================================
+// IMAGE UPLOAD ENDPOINTS
+// ==========================================
+
+app.post('/api/admin/upload', verifyAdmin, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image provided' });
+    }
+
+    const imageData = {
+      id: uuidv4(),
+      filename: req.file.filename,
+      originalname: req.file.originalname,
+      url: `/uploads/${req.file.filename}`,
+      size: req.file.size,
+      uploadedAt: new Date().toISOString()
+    };
+
+    res.json(imageData);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
+
+app.get('/api/admin/images', verifyAdmin, (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadsDir);
+    const images = files.map(filename => {
+      const filepath = path.join(uploadsDir, filename);
+      const stat = fs.statSync(filepath);
+      return {
+        id: filename,
+        filename,
+        url: `/uploads/${filename}`,
+        size: stat.size,
+        uploadedAt: stat.birthtime.toISOString()
+      };
+    });
+
+    res.json(images);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch images' });
+  }
+});
+
+app.delete('/api/admin/images/:filename', verifyAdmin, (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filepath = path.join(uploadsDir, filename);
+
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    fs.unlinkSync(filepath);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete image' });
   }
 });
 

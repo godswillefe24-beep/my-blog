@@ -55,6 +55,36 @@ function setupEventListeners() {
   document.getElementById('save-settings-btn').addEventListener('click', () => {
     console.log('Settings saved');
   });
+
+  // Media Upload
+  document.getElementById('media-upload').addEventListener('change', handleMediaUpload);
+}
+
+async function handleMediaUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const response = await fetch(`${API}/admin/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer local-token` },
+      body: formData
+    });
+
+    if (response.ok) {
+      alert('Image uploaded successfully!');
+      document.getElementById('media-upload').value = '';
+      loadGallery();
+    } else {
+      alert('Failed to upload image');
+    }
+  } catch (error) {
+    console.error('Upload error:', error);
+    alert('Error uploading image');
+  }
 }
 
 function handleLogin(e) {
@@ -86,6 +116,7 @@ function showSection(sectionName) {
     
     // Load data for the section
     if (sectionName === 'posts') loadPosts();
+    if (sectionName === 'media') loadGallery();
     if (sectionName === 'comments') loadComments();
     if (sectionName === 'subscribers') loadSubscribers();
   }
@@ -186,6 +217,65 @@ async function loadSubscribers() {
     console.log('Could not load subscribers:', e.message);
     document.getElementById('subscribers-list').innerHTML = '<p>No subscribers yet</p>';
   }
+}
+
+async function loadGallery() {
+  try {
+    const response = await fetch(`${API}/admin/images`, {
+      headers: { 'Authorization': `Bearer local-token` }
+    });
+
+    if (response.ok) {
+      const images = await response.json();
+      const gallery = document.getElementById('media-gallery');
+      
+      if (images.length === 0) {
+        gallery.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; padding: 40px;">No images uploaded yet</p>';
+        return;
+      }
+
+      gallery.innerHTML = images.map(img => `
+        <div class="gallery-item">
+          <img src="${img.url}" alt="${img.filename}" />
+          <div class="gallery-overlay">
+            <button class="btn btn-sm" onclick="copyImageUrl('${img.url}')">📋 Copy URL</button>
+            <button class="btn btn-sm btn-secondary" onclick="deleteImage('${img.filename}')">🗑️ Delete</button>
+          </div>
+          <p class="image-info">${img.filename}</p>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.log('Could not load gallery:', e.message);
+    document.getElementById('media-gallery').innerHTML = '<p>Failed to load gallery</p>';
+  }
+}
+
+async function deleteImage(filename) {
+  if (!confirm('Are you sure you want to delete this image?')) return;
+
+  try {
+    const response = await fetch(`${API}/admin/images/${filename}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer local-token` }
+    });
+
+    if (response.ok) {
+      loadGallery();
+    } else {
+      alert('Failed to delete image');
+    }
+  } catch (error) {
+    console.error('Delete error:', error);
+    alert('Error deleting image');
+  }
+}
+
+function copyImageUrl(url) {
+  const fullUrl = window.location.origin + url;
+  navigator.clipboard.writeText(fullUrl).then(() => {
+    alert('Image URL copied to clipboard!');
+  });
 }
 
 console.log('Admin script ready');

@@ -974,6 +974,88 @@ window.addEventListener('load', function() {
 });
 
 // ============================================
+// IMAGE GALLERY FOR POSTS
+// ============================================
+
+const imageBtn = document.getElementById('image-btn');
+const galleryModal = document.getElementById('image-gallery-modal');
+const galleryList = document.getElementById('gallery-list');
+const galleryLoading = document.getElementById('gallery-loading');
+const modalCloseBtn = document.querySelector('.modal-close-btn');
+
+if (imageBtn && galleryModal) {
+  imageBtn.addEventListener('click', () => {
+    galleryModal.classList.remove('hidden');
+    loadGalleryImages();
+  });
+}
+
+if (modalCloseBtn) {
+  modalCloseBtn.addEventListener('click', () => {
+    galleryModal.classList.add('hidden');
+  });
+}
+
+if (galleryModal) {
+  galleryModal.addEventListener('click', (e) => {
+    if (e.target === galleryModal) {
+      galleryModal.classList.add('hidden');
+    }
+  });
+}
+
+async function loadGalleryImages() {
+  galleryLoading.style.display = 'block';
+  galleryList.innerHTML = '';
+
+  try {
+    const response = await fetch('http://localhost:3001/api/admin/images');
+    if (response.ok) {
+      const images = await response.json();
+      galleryLoading.style.display = 'none';
+
+      if (images.length === 0) {
+        galleryList.innerHTML = '<p style="grid-column: 1 / -1; text-align: center;">No images uploaded yet. Go to admin dashboard to upload images.</p>';
+        return;
+      }
+
+      galleryList.innerHTML = images.map(img => `
+        <img src="${img.url}" alt="Gallery image" onclick="insertImage('${img.url}')" style="cursor: pointer;" />
+      `).join('');
+    } else {
+      throw new Error('Failed to load images');
+    }
+  } catch (error) {
+    galleryLoading.style.display = 'none';
+    galleryList.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: #ef4444;">Failed to load images. Make sure the server is running.</p>';
+    console.error('Error loading gallery:', error);
+  }
+}
+
+function insertImage(imageUrl) {
+  const fullUrl = window.location.origin + imageUrl;
+  
+  // Create image HTML
+  const imageHtml = `<figure style="margin: 20px 0; text-align: center;"><img src="${fullUrl}" alt="Post image" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" /><figcaption style="margin-top: 10px; color: #64748b; font-size: 0.9rem;"></figcaption></figure>`;
+  
+  // Insert into article
+  const article = document.querySelector('article');
+  if (article) {
+    const newElement = document.createElement('div');
+    newElement.innerHTML = imageHtml;
+    article.appendChild(newElement.firstElementChild);
+    showNotification('✓ Image inserted into post!', 'success');
+  } else {
+    // Fallback: copy to clipboard
+    navigator.clipboard.writeText(`<img src="${fullUrl}" alt="Post image" style="max-width: 100%; border-radius: 8px;" />`);
+    showNotification('✓ Image HTML copied to clipboard!', 'success');
+  }
+  
+  // Close modal
+  galleryModal.classList.add('hidden');
+}
+
+// ============================================
 // CONSOLE WELCOME MESSAGE
 // ============================================
 console.log('%c🎉 Welcome to My Interactive Blog!', 'color: #667eea; font-size: 16px; font-weight: bold;');
