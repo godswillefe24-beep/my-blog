@@ -121,7 +121,7 @@ if ('serviceWorker' in navigator) {
 // DARK MODE TOGGLE
 // ==========================================
 
-const themeToggle = document.querySelector('.theme-toggle');
+const themeToggle = document.querySelector('.theme-toggle, .theme-btn');
 if (themeToggle) {
   const isDarkMode = db.getDarkMode();
   if (isDarkMode) {

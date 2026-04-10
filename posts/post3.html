@@ -26,7 +26,13 @@
   </head>
   <body>
     <header class="site-header">
-      <h1>Getting Started with Your Blog</h1>
+      <div class="header-top">
+        <a href="../index.html" class="back-btn">← Back</a>
+        <h1>Getting Started with Your Blog</h1>
+        <button id="theme-toggle" class="theme-btn" title="Toggle dark mode">
+          🌙
+        </button>
+      </div>
     </header>
 
     <main class="container">
@@ -107,7 +113,23 @@
     </main>
 
     <footer class="site-footer">
-      <p>&copy; 2026 — Efe</p>
+      <div class="footer-content">
+        <div class="footer-section">
+          <h4>About</h4>
+          <p>A modern blog built with simplicity in mind.</p>
+        </div>
+        <div class="footer-section">
+          <h4>Pages</h4>
+          <ul>
+            <li><a href="../index.html">Home</a></li>
+            <li><a href="../index.html#posts-section">All Posts</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 — Efe. Built with ❤️</p>
+      </div>
     </footer>
   </body>
+  <script src="../script.js"></script>
 </html>
