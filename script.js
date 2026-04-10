@@ -94,6 +94,220 @@ class BlogDatabase {
 const db = new BlogDatabase();
 
 // ==========================================
+// USER AUTHENTICATION
+// ==========================================
+
+class AuthManager {
+  constructor() {
+    this.token = localStorage.getItem('auth_token');
+    this.user = JSON.parse(localStorage.getItem('auth_user') || 'null');
+    this.init();
+  }
+
+  init() {
+    this.setupAuthUI();
+    this.setupAuthModal();
+    if (this.token) {
+      this.validateToken();
+    }
+  }
+
+  setupAuthUI() {
+    const authBtn = document.getElementById('auth-btn');
+    const userDropdown = document.getElementById('user-profile-dropdown');
+
+    if (this.user) {
+      authBtn.textContent = `👤 ${this.user.username}`;
+      authBtn.classList.add('logged-in');
+      authBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('hidden');
+      });
+      this.updateUserProfile();
+    } else {
+      authBtn.addEventListener('click', () => {
+        document.getElementById('auth-modal').classList.remove('hidden');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.auth-header-btn') && !e.target.closest('.user-dropdown')) {
+        userDropdown.classList.add('hidden');
+      }
+    });
+  }
+
+  setupAuthModal() {
+    const modal = document.getElementById('auth-modal');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const closeBtn = document.querySelector('.modal-close');
+    const tabs = document.querySelectorAll('.auth-tab');
+
+    closeBtn.addEventListener('click', () => {
+      modal.classList.add('hidden');
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+      }
+    });
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        
+        tab.classList.add('active');
+        const formId = `${tab.dataset.tab}-form`;
+        document.getElementById(formId).classList.add('active');
+      });
+    });
+
+    loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+    registerForm.addEventListener('submit', (e) => this.handleRegister(e));
+  }
+
+  async handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const message = document.getElementById('login-message');
+
+    message.textContent = 'Logging in...';
+    message.className = 'auth-message';
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        this.setAuth(data.token, data.user);
+        message.textContent = 'Login successful!';
+        message.className = 'auth-message success';
+        
+        setTimeout(() => {
+          document.getElementById('auth-modal').classList.add('hidden');
+          document.getElementById('login-form').reset();
+          location.reload();
+        }, 1500);
+      } else {
+        message.textContent = data.error || 'Login failed';
+        message.className = 'auth-message error';
+      }
+    } catch (error) {
+      message.textContent = 'Error: Server not responding';
+      message.className = 'auth-message error';
+    }
+  }
+
+  async handleRegister(e) {
+    e.preventDefault();
+    const username = document.getElementById('register-username').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-confirm').value;
+    const message = document.getElementById('register-message');
+
+    message.textContent = 'Creating account...';
+    message.className = 'auth-message';
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password, confirmPassword })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        this.setAuth(data.token, data.user);
+        message.textContent = 'Account created successfully!';
+        message.className = 'auth-message success';
+        
+        setTimeout(() => {
+          document.getElementById('auth-modal').classList.add('hidden');
+          document.getElementById('register-form').reset();
+          location.reload();
+        }, 1500);
+      } else {
+        message.textContent = data.error || 'Registration failed';
+        message.className = 'auth-message error';
+      }
+    } catch (error) {
+      message.textContent = 'Error: Server not responding';
+      message.className = 'auth-message error';
+    }
+  }
+
+  setAuth(token, user) {
+    this.token = token;
+    this.user = user;
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('auth_user', JSON.stringify(user));
+  }
+
+  logout() {
+    this.token = null;
+    this.user = null;
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
+    location.reload();
+  }
+
+  async validateToken() {
+    try {
+      const response = await fetch(`${API_BASE}/auth/validate`, {
+        headers: { 'Authorization': `Bearer ${this.token}` }
+      });
+
+      if (!response.ok) {
+        this.logout();
+      } else {
+        const data = await response.json();
+        this.user = data.user;
+        localStorage.setItem('auth_user', JSON.stringify(data.user));
+      }
+    } catch (error) {
+      console.log('Token validation failed');
+    }
+  }
+
+  updateUserProfile() {
+    const userInfo = document.querySelector('.user-info');
+    if (userInfo && this.user) {
+      userInfo.innerHTML = `
+        <h3>${this.user.username}</h3>
+        <p>${this.user.email}</p>
+        <div class="user-stats">
+          <div class="user-stat">
+            <div class="user-stat-number">${this.user.posts || 0}</div>
+            <div class="user-stat-label">Posts</div>
+          </div>
+          <div class="user-stat">
+            <div class="user-stat-number">${this.user.comments || 0}</div>
+            <div class="user-stat-label">Comments</div>
+          </div>
+        </div>
+      `;
+
+      const logoutBtn = document.getElementById('logout-btn');
+      logoutBtn.addEventListener('click', () => this.logout());
+    }
+  }
+}
+
+// Initialize auth manager
+const authManager = new AuthManager();
+
+// ==========================================
 // SERVICE WORKER REGISTRATION (PWA)
 // ==========================================
 
@@ -323,6 +537,11 @@ document.querySelectorAll('.comments-section').forEach(section => {
   const textInput = section.querySelector('.comment-text');
   const submitBtn = section.querySelector('.comment-submit');
 
+  // Hide name input for authenticated users
+  if (authManager.user && nameInput) {
+    nameInput.style.display = 'none';
+  }
+
   // Load initial comments
   loadComments(postId);
 
@@ -331,7 +550,8 @@ document.querySelectorAll('.comments-section').forEach(section => {
       const name = nameInput.value.trim();
       const text = textInput.value.trim();
 
-      if (!name) {
+      // If not logged in, require name
+      if (!authManager.user && !name) {
         showNotification('Please enter your name', 'error');
         nameInput.focus();
         return;
@@ -349,9 +569,14 @@ document.querySelectorAll('.comments-section').forEach(section => {
       }
 
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (authManager.token) {
+          headers['Authorization'] = `Bearer ${authManager.token}`;
+        }
+
         const response = await fetch(`${API_BASE}/comments`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ postId, name, text })
         });
 
@@ -364,6 +589,7 @@ document.querySelectorAll('.comments-section').forEach(section => {
           loadComments(postId);
 
           // Show notification
+          showNotification(`✓ Comment posted successfully!`, 'success');
           showNotification(`✓ Comment posted by ${name}!`, 'success');
         } else {
           showNotification('Failed to post comment', 'error');
