@@ -1,129 +1,191 @@
-// Admin Dashboard Script
+const API = 'http://localhost:3001/api';
+const PASSWORD = 'admin123';
 
-console.log('Admin script loading...');
+let isLoggedIn = false;
 
-const API_BASE = 'http://localhost:3001/api';
-const ADMIN_PASSWORD = 'admin123';
+// DOM Elements
+const loginContainer = document.getElementById('login-container');
+const dashboard = document.getElementById('dashboard');
+const loginForm = document.getElementById('login-form');
+const passwordInput = document.getElementById('password');
+const logoutBtn = document.getElementById('logout-btn');
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAdmin);
-} else {
-  initAdmin();
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Admin dashboard loaded');
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  // Login
+  loginForm.addEventListener('submit', handleLogin);
+
+  // Navigation
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      e.target.closest('.nav-btn').classList.add('active');
+      
+      const section = e.target.closest('.nav-btn').dataset.section;
+      showSection(section);
+    });
+  });
+
+  // Logout
+  logoutBtn.addEventListener('click', handleLogout);
+
+  // Post Modal
+  const postModal = document.getElementById('post-modal');
+  document.getElementById('new-post-btn').addEventListener('click', () => {
+    document.getElementById('modal-title').textContent = 'New Post';
+    postModal.classList.remove('hidden');
+  });
+
+  document.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => postModal.classList.add('hidden'));
+  });
+
+  document.getElementById('post-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    console.log('Post saved');
+    postModal.classList.add('hidden');
+  });
+
+  // Save Settings
+  document.getElementById('save-settings-btn').addEventListener('click', () => {
+    console.log('Settings saved');
+  });
 }
 
-function initAdmin() {
-  console.log('Initializing admin dashboard...');
+function handleLogin(e) {
+  e.preventDefault();
   
-  // Get elements
-  const loginForm = document.getElementById('login-form');
-  const loginScreen = document.getElementById('login-screen');
-  const dashboardScreen = document.getElementById('dashboard-screen');
-  
-  console.log('Elements:', {
-    loginForm: !!loginForm,
-    loginScreen: !!loginScreen,
-    dashboardScreen: !!dashboardScreen
-  });
-  
-  // Login form handler
-  if (loginForm) {
-    loginForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      console.log('Form submitted');
-      
-      const passwordInput = document.getElementById('admin-password');
-      const password = passwordInput ? passwordInput.value : '';
-      
-      console.log('Password check:', password, '==', ADMIN_PASSWORD, '?', password === ADMIN_PASSWORD);
-      
-      if (password === ADMIN_PASSWORD) {
-        console.log('Password correct! Switching screens...');
-        
-        // Hide login, show dashboard
-        if (loginScreen) {
-          console.log('Hiding login screen');
-          loginScreen.classList.add('hidden');
-          loginScreen.style.display = 'none';
-        }
-        if (dashboardScreen) {
-          console.log('Showing dashboard screen');
-          dashboardScreen.classList.remove('hidden');
-          dashboardScreen.style.display = 'grid';
-        }
-        
-        alert('✅ Login successful!');
-      } else {
-        console.log('Password incorrect');
-        alert('❌ Invalid password. Try: admin123');
-        if (passwordInput) passwordInput.value = '';
-      }
-    });
+  if (passwordInput.value === PASSWORD) {
+    isLoggedIn = true;
+    loginContainer.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    loadDashboardData();
   } else {
-    console.error('Login form not found!');
+    alert('Invalid password');
+    passwordInput.value = '';
   }
-  
-  // Logout handler
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', function() {
-      console.log('Logout clicked');
-      
-      if (loginScreen) {
-        loginScreen.classList.remove('hidden');
-        loginScreen.style.display = 'flex';
-      }
-      if (dashboardScreen) {
-        dashboardScreen.classList.add('hidden');
-        dashboardScreen.style.display = 'none';
-      }
-      
-      const passwordInput = document.getElementById('admin-password');
-      if (passwordInput) passwordInput.value = '';
-    });
-  }
-  
-  // Tab navigation
-  const navItems = document.querySelectorAll('.nav-item');
-  console.log('Nav items found:', navItems.length);
-  
-  navItems.forEach(item => {
-    item.addEventListener('click', function() {
-      const tabName = this.dataset.tab;
-      console.log('Tab clicked:', tabName);
-      
-      // Remove active from all nav items and tabs
-      navItems.forEach(i => i.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      
-      // Add active to selected
-      this.classList.add('active');
-      const tabContent = document.getElementById(tabName);
-      if (tabContent) {
-        tabContent.classList.add('active');
-      }
-    });
-  });
-  
-  // Modal controls
-  const closeButtons = document.querySelectorAll('.modal-close, .modal-close-btn');
-  closeButtons.forEach(btn => {
-    btn.addEventListener('click', function() {
-      const modal = document.getElementById('post-modal');
-      if (modal) modal.classList.remove('active');
-    });
-  });
-  
-  // New post button
-  const newPostBtn = document.getElementById('new-post-btn');
-  if (newPostBtn) {
-    newPostBtn.addEventListener('click', function() {
-      const modal = document.getElementById('post-modal');
-      if (modal) modal.classList.add('active');
-    });
-  }
-  
-  console.log('Admin dashboard initialized ✅');
 }
+
+function handleLogout() {
+  isLoggedIn = false;
+  loginContainer.classList.remove('hidden');
+  dashboard.classList.add('hidden');
+  passwordInput.value = '';
+}
+
+function showSection(sectionName) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const section = document.getElementById(sectionName);
+  if (section) {
+    section.classList.add('active');
+    
+    // Load data for the section
+    if (sectionName === 'posts') loadPosts();
+    if (sectionName === 'comments') loadComments();
+    if (sectionName === 'subscribers') loadSubscribers();
+  }
+}
+
+async function loadDashboardData() {
+  try {
+    const response = await fetch(`${API}/analytics`);
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById('stat-posts').textContent = 4;
+      document.getElementById('stat-comments').textContent = data.totalComments || 0;
+      document.getElementById('stat-likes').textContent = data.totalLikes || 0;
+      document.getElementById('stat-subscribers').textContent = data.totalSubscribers || 0;
+    }
+  } catch (e) {
+    console.log('Could not load analytics:', e.message);
+    // Set defaults
+    document.getElementById('stat-posts').textContent = 4;
+    document.getElementById('stat-comments').textContent = 0;
+    document.getElementById('stat-likes').textContent = 0;
+    document.getElementById('stat-subscribers').textContent = 0;
+  }
+}
+
+async function loadPosts() {
+  try {
+    const response = await fetch(`${API}/posts`);
+    if (response.ok) {
+      const posts = await response.json();
+      const container = document.getElementById('posts-list');
+      container.innerHTML = (posts || []).map(post => `
+        <div class="item">
+          <div class="item-info">
+            <h3>${post.title}</h3>
+            <p>${post.category} • ${new Date(post.date || Date.now()).toLocaleDateString()}</p>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-sm">Edit</button>
+            <button class="btn btn-sm btn-secondary">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.log('Could not load posts:', e.message);
+    document.getElementById('posts-list').innerHTML = '<p>No posts yet</p>';
+  }
+}
+
+async function loadComments() {
+  try {
+    const response = await fetch(`${API}/comments`);
+    if (response.ok) {
+      const comments = await response.json();
+      const container = document.getElementById('comments-list');
+      container.innerHTML = (comments || []).map(comment => `
+        <div class="item">
+          <div class="item-info">
+            <h3>${comment.name}</h3>
+            <p>${comment.text.substring(0, 100)}...</p>
+            <p style="font-size: 0.8rem; margin-top: 5px;">${new Date(comment.date).toLocaleDateString()}</p>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-sm btn-secondary">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.log('Could not load comments:', e.message);
+    document.getElementById('comments-list').innerHTML = '<p>No comments yet</p>';
+  }
+}
+
+async function loadSubscribers() {
+  try {
+    const response = await fetch(`${API}/admin/subscribers`, {
+      headers: { 'Authorization': `Bearer local-token` }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const subscribers = data.subscribers || [];
+      const container = document.getElementById('subscribers-list');
+      container.innerHTML = (subscribers || []).map(sub => `
+        <div class="item">
+          <div class="item-info">
+            <h3>${sub.email}</h3>
+            <p>Subscribed • ${new Date(sub.subscribedAt || Date.now()).toLocaleDateString()}</p>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-sm btn-secondary">Remove</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.log('Could not load subscribers:', e.message);
+    document.getElementById('subscribers-list').innerHTML = '<p>No subscribers yet</p>';
+  }
+}
+
+console.log('Admin script ready');
