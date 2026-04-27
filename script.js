@@ -116,20 +116,35 @@ class AuthManager {
     const authBtn = document.getElementById('auth-btn');
     const userDropdown = document.getElementById('user-profile-dropdown');
 
-    if (this.user) {
-      authBtn.textContent = `👤 ${this.user.username}`;
-      authBtn.classList.add('logged-in');
-      authBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        userDropdown.classList.toggle('hidden');
-      });
-      this.updateUserProfile();
-    } else {
-      authBtn.addEventListener('click', () => {
-        document.getElementById('auth-modal').classList.remove('hidden');
-      });
+    // Only setup auth UI if elements exist (they won't on post pages)
+    if (!authBtn || !userDropdown) return;
+
+    // Make sure we have latest user data
+    if (!this.user && localStorage.getItem('auth_user')) {
+      this.user = JSON.parse(localStorage.getItem('auth_user'));
+      console.log('Loaded user from localStorage:', this.user.username);
     }
 
+    if (this.user) {
+      console.log('✓ Setting up logged-in UI for:', this.user.username);
+      authBtn.textContent = `👤 ${this.user.username}`;
+      authBtn.classList.add('logged-in');
+      authBtn.onclick = (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('hidden');
+      };
+      this.updateUserProfile();
+    } else {
+      console.log('Setting up logged-out UI');
+      authBtn.textContent = '👤 Login';
+      authBtn.classList.remove('logged-in');
+      authBtn.onclick = () => {
+        const modal = document.getElementById('auth-modal');
+        if (modal) modal.classList.remove('hidden');
+      };
+    }
+
+    // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.auth-header-btn') && !e.target.closest('.user-dropdown')) {
         userDropdown.classList.add('hidden');
@@ -143,6 +158,9 @@ class AuthManager {
     const registerForm = document.getElementById('register-form');
     const closeBtn = document.querySelector('.modal-close');
     const tabs = document.querySelectorAll('.auth-tab');
+
+    // Only setup auth modal if elements exist (they won't on post pages)
+    if (!modal || !loginForm || !registerForm || !closeBtn || tabs.length === 0) return;
 
     closeBtn.addEventListener('click', () => {
       modal.classList.add('hidden');
@@ -187,7 +205,7 @@ class AuthManager {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.token && data.user) {
         this.setAuth(data.token, data.user);
         message.textContent = 'Login successful!';
         message.className = 'auth-message success';
@@ -196,13 +214,13 @@ class AuthManager {
           document.getElementById('auth-modal').classList.add('hidden');
           document.getElementById('login-form').reset();
           location.reload();
-        }, 1500);
+        }, 800);
       } else {
         message.textContent = data.error || 'Login failed';
         message.className = 'auth-message error';
       }
     } catch (error) {
-      message.textContent = 'Error: Server not responding';
+      message.textContent = 'Error: ' + error.message;
       message.className = 'auth-message error';
     }
   }
@@ -265,23 +283,27 @@ class AuthManager {
   async validateToken() {
     try {
       const response = await fetch(`${API_BASE}/auth/validate`, {
+        method: 'POST',
         headers: { 'Authorization': `Bearer ${this.token}` }
       });
 
       if (!response.ok) {
+        console.log('Token validation failed, logging out');
         this.logout();
       } else {
         const data = await response.json();
         this.user = data.user;
         localStorage.setItem('auth_user', JSON.stringify(data.user));
+        console.log('✓ Token valid, user:', this.user.username);
       }
     } catch (error) {
-      console.log('Token validation failed');
+      console.log('Token validation error (server may not be available):', error.message);
+      // Don't logout on network error - user data might still be valid
     }
   }
 
   updateUserProfile() {
-    const userInfo = document.querySelector('.user-info');
+    const userInfo = document.getElementById('user-info');
     if (userInfo && this.user) {
       userInfo.innerHTML = `
         <h3>${this.user.username}</h3>
@@ -299,7 +321,9 @@ class AuthManager {
       `;
 
       const logoutBtn = document.getElementById('logout-btn');
-      logoutBtn.addEventListener('click', () => this.logout());
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => this.logout());
+      }
     }
   }
 }

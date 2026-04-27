@@ -39,6 +39,11 @@ self.addEventListener('activate', event => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', event => {
+  // Skip non-HTTP(S) requests (e.g., chrome-extension://, blob:, etc.)
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) {
+    return;
+  }
+
   // Skip API calls - always try network first
   if (event.request.url.includes('/api/')) {
     event.respondWith(
@@ -54,13 +59,25 @@ self.addEventListener('fetch', event => {
     caches.match(event.request).then(response => {
       return response || fetch(event.request)
         .then(response => {
-          // Cache successful responses
-          if (!response || response.status !== 200 || response.type === 'error') {
+          // Only cache successful responses with valid types
+          if (!response || response.status !== 200 || response.type === 'error' || response.type === 'opaque') {
             return response;
           }
+          
+          // Skip caching certain content types
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('chrome-extension') || response.url.includes('chrome-extension')) {
+            return response;
+          }
+
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
+            try {
+              cache.put(event.request, responseToCache);
+            } catch (error) {
+              // Silently ignore caching errors
+              console.debug('Cache write error:', error);
+            }
           });
           return response;
         })
@@ -77,6 +94,7 @@ self.addEventListener('sync', event => {
   if (event.tag === 'sync-comments') {
     event.waitUntil(syncComments());
   }
+  
 });
 
 async function syncComments() {
