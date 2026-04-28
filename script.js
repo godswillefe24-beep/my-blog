@@ -1306,6 +1306,36 @@ function insertImage(imageUrl) {
 }
 
 // ============================================
+// RECENT POSTS WIDGET
+// ============================================
+
+function loadRecentPosts() {
+  const recentPostsContainer = document.getElementById('recent-posts');
+  if (!recentPostsContainer) return;
+
+  const posts = [
+    { title: 'Latest Technology News and Innovations', url: 'posts/post2.html' },
+    { title: 'Design Principles for Better UX', url: 'posts/post3.html' },
+    { title: 'Why I Started This Blog', url: 'posts/post4.html' }
+  ];
+
+  const html = posts.map(post => `
+    <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+      <a href="${post.url}" style="color: var(--accent); text-decoration: none; font-weight: 500; font-size: 0.9rem; line-height: 1.4; display: block;">
+        ${post.title}
+      </a>
+    </div>
+  `).join('');
+
+  recentPostsContainer.innerHTML = html;
+}
+
+// Load recent posts on page load
+if (document.getElementById('recent-posts')) {
+  loadRecentPosts();
+}
+
+// ============================================
 // CONSOLE WELCOME MESSAGE
 // ============================================
 console.log('%c🎉 Welcome to My Interactive Blog!', 'color: #667eea; font-size: 16px; font-weight: bold;');

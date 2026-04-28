@@ -135,7 +135,7 @@ async function handlePostSubmit(e) {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer local-token`
+        'Authorization': `Bearer ${adminToken}`
       },
       body: JSON.stringify({
         id: 'post-' + Date.now(),
@@ -174,9 +174,9 @@ async function handleSaveSettings() {
   try {
     const response = await fetch(`${API}/admin/settings`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer local-token`
+        'Authorization': `Bearer ${adminToken}`
       },
       body: JSON.stringify({
         title: blogTitle,
@@ -266,7 +266,7 @@ async function deletePost(postId) {
   try {
     const response = await fetch(`${API}/admin/posts/${postId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer local-token` }
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
     
     if (response.ok) {
@@ -312,7 +312,7 @@ async function deleteComment(commentId) {
   try {
     const response = await fetch(`${API}/comments/${commentId}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer local-token` }
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
     
     if (response.ok) {
@@ -330,7 +330,7 @@ async function deleteComment(commentId) {
 async function loadSubscribers() {
   try {
     const response = await fetch(`${API}/admin/subscribers`, {
-      headers: { 'Authorization': `Bearer local-token` }
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
     if (response.ok) {
       const data = await response.json();
@@ -357,7 +357,7 @@ async function loadSubscribers() {
 async function loadGallery() {
   try {
     const response = await fetch(`${API}/admin/images`, {
-      headers: { 'Authorization': `Bearer local-token` }
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
 
     if (response.ok) {
@@ -392,7 +392,7 @@ async function deleteImage(filename) {
   try {
     const response = await fetch(`${API}/admin/images/${filename}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer local-token` }
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
 
     if (response.ok) {
