@@ -45,16 +45,10 @@ function setupEventListeners() {
     btn.addEventListener('click', () => postModal.classList.add('hidden'));
   });
 
-  document.getElementById('post-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    console.log('Post saved');
-    postModal.classList.add('hidden');
-  });
+  document.getElementById('post-form').addEventListener('submit', handlePostSubmit);
 
   // Save Settings
-  document.getElementById('save-settings-btn').addEventListener('click', () => {
-    console.log('Settings saved');
-  });
+  document.getElementById('save-settings-btn').addEventListener('click', handleSaveSettings);
 
   // Media Upload
   document.getElementById('media-upload').addEventListener('change', handleMediaUpload);
@@ -108,6 +102,86 @@ function handleLogout() {
   passwordInput.value = '';
 }
 
+async function handlePostSubmit(e) {
+  e.preventDefault();
+  const postModal = document.getElementById('post-modal');
+  
+  const title = document.getElementById('post-title').value.trim();
+  const content = document.getElementById('post-content').value.trim();
+  const category = document.getElementById('post-category').value.trim();
+  
+  if (!title || !content || !category) {
+    alert('Please fill in all fields');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API}/admin/posts`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer local-token`
+      },
+      body: JSON.stringify({
+        id: 'post-' + Date.now(),
+        title,
+        content,
+        category,
+        date: new Date().toISOString()
+      })
+    });
+    
+    if (response.ok) {
+      alert('✓ Post created successfully!');
+      document.getElementById('post-form').reset();
+      postModal.classList.add('hidden');
+      loadPosts();
+    } else {
+      const error = await response.json();
+      alert('Failed to create post: ' + (error.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Post creation error:', error);
+    alert('Error creating post: ' + error.message);
+  }
+}
+
+async function handleSaveSettings() {
+  const blogTitle = document.getElementById('blog-title').value.trim();
+  const blogDescription = document.getElementById('blog-description').value.trim();
+  const newPassword = document.getElementById('new-password').value;
+  
+  if (!blogTitle || !blogDescription) {
+    alert('Please fill in all required fields');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API}/admin/settings`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer local-token`
+      },
+      body: JSON.stringify({
+        title: blogTitle,
+        description: blogDescription,
+        password: newPassword || undefined
+      })
+    });
+    
+    if (response.ok) {
+      alert('✓ Settings saved successfully!');
+    } else {
+      const error = await response.json();
+      alert('Failed to save settings: ' + (error.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Settings save error:', error);
+    alert('Error saving settings: ' + error.message);
+  }
+}
+
 function showSection(sectionName) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   const section = document.getElementById(sectionName);
@@ -155,8 +229,8 @@ async function loadPosts() {
             <p>${post.category} • ${new Date(post.date || Date.now()).toLocaleDateString()}</p>
           </div>
           <div class="item-actions">
-            <button class="btn btn-sm">Edit</button>
-            <button class="btn btn-sm btn-secondary">Delete</button>
+            <button class="btn btn-sm" onclick="editPost('${post.id}')">Edit</button>
+            <button class="btn btn-sm btn-secondary" onclick="deletePost('${post.id}')">Delete</button>
           </div>
         </div>
       `).join('');
@@ -164,6 +238,31 @@ async function loadPosts() {
   } catch (e) {
     console.log('Could not load posts:', e.message);
     document.getElementById('posts-list').innerHTML = '<p>No posts yet</p>';
+  }
+}
+
+async function editPost(postId) {
+  alert('Edit functionality coming soon! Post ID: ' + postId);
+}
+
+async function deletePost(postId) {
+  if (!confirm('Are you sure you want to delete this post?')) return;
+  
+  try {
+    const response = await fetch(`${API}/admin/posts/${postId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer local-token` }
+    });
+    
+    if (response.ok) {
+      alert('✓ Post deleted successfully!');
+      loadPosts();
+    } else {
+      alert('Failed to delete post');
+    }
+  } catch (error) {
+    console.error('Delete error:', error);
+    alert('Error deleting post');
   }
 }
 
@@ -181,7 +280,7 @@ async function loadComments() {
             <p style="font-size: 0.8rem; margin-top: 5px;">${new Date(comment.date).toLocaleDateString()}</p>
           </div>
           <div class="item-actions">
-            <button class="btn btn-sm btn-secondary">Delete</button>
+            <button class="btn btn-sm btn-secondary" onclick="deleteComment('${comment.id}')">Delete</button>
           </div>
         </div>
       `).join('');
@@ -189,6 +288,27 @@ async function loadComments() {
   } catch (e) {
     console.log('Could not load comments:', e.message);
     document.getElementById('comments-list').innerHTML = '<p>No comments yet</p>';
+  }
+}
+
+async function deleteComment(commentId) {
+  if (!confirm('Are you sure you want to delete this comment?')) return;
+  
+  try {
+    const response = await fetch(`${API}/comments/${commentId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer local-token` }
+    });
+    
+    if (response.ok) {
+      alert('✓ Comment deleted successfully!');
+      loadComments();
+    } else {
+      alert('Failed to delete comment');
+    }
+  } catch (error) {
+    console.error('Delete error:', error);
+    alert('Error deleting comment');
   }
 }
 

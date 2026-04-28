@@ -241,7 +241,7 @@ body.dark-mode {
 .site-header {
   position: relative;
   overflow: hidden;
-  padding: 30px 16px;
+  padding: 20px 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   text-align: center;
@@ -277,16 +277,16 @@ body.dark-mode {
 }
 
 .main-title {
-  font-size: 3.5rem;
+  font-size: 2.2rem;
   font-weight: 800;
-  margin: 0 0 10px 0;
-  letter-spacing: -2px;
+  margin: 0 0 8px 0;
+  letter-spacing: -1px;
   animation: slideInDown 0.8s ease-out;
 }
 
 .tagline {
-  font-size: 1.25rem;
-  margin: 0 0 30px 0;
+  font-size: 0.95rem;
+  margin: 0 0 15px 0;
   opacity: 0.95;
   font-weight: 300;
   animation: slideInUp 0.8s ease-out 0.2s both;
@@ -451,15 +451,12 @@ body.dark-mode {
 
 /* FEATURED POST */
 .featured-post {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-  align-items: center;
+  display: block;
   background: var(--card);
-  padding: 24px;
+  padding: 16px;
   border-radius: 12px;
   box-shadow: var(--shadow);
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease;
@@ -467,8 +464,60 @@ body.dark-mode {
 }
 
 .featured-post:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-hover);
+}
+
+/* LIKE BUTTON STYLING */
+.like-container {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.like-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.like-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.like-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.like-btn .heart {
+  font-size: 1.1em;
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.like-btn.liked .heart {
+  animation: heartBeat 0.4s ease;
+}
+
+.like-count {
+  font-weight: 700;
+  min-width: 20px;
 }
 
 /* COMMENTS SECTION */
@@ -1516,6 +1565,14 @@ body.dark-mode {
 }
 
 @media (max-width: 768px) {
+  .main-title {
+    font-size: 1.8rem;
+  }
+
+  .tagline {
+    font-size: 0.85rem;
+  }
+
   .header-top {
     flex-direction: column;
     gap: 15px;
