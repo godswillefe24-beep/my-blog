@@ -1336,6 +1336,33 @@ if (document.getElementById('recent-posts')) {
 }
 
 // ============================================
+// POPULAR POSTS WIDGET
+// ============================================
+
+function loadPopularPosts() {
+  const container = document.getElementById('popular-posts');
+  if (!container) return;
+
+  // Simple static popular list (replace with analytics-driven data later)
+  const popular = [
+    { title: 'Welcome to my blog', url: 'posts/post1.html' },
+    { title: 'Latest Technology News and Innovations', url: 'posts/post2.html' },
+    { title: 'Design Principles for Better UX', url: 'posts/post3.html' }
+  ];
+
+  container.innerHTML = popular.map(p => `
+    <div style="margin-bottom:10px;">
+      <a href="${p.url}" style="color: var(--accent); font-weight:600;">${p.title}</a>
+      <div style="font-size:0.85rem; color:var(--muted);">1.2k views</div>
+    </div>
+  `).join('');
+}
+
+if (document.getElementById('popular-posts')) {
+  loadPopularPosts();
+}
+
+// ============================================
 // CONSOLE WELCOME MESSAGE
 // ============================================
 console.log('%c🎉 Welcome to My Interactive Blog!', 'color: #667eea; font-size: 16px; font-weight: bold;');

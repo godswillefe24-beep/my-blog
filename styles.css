@@ -1099,6 +1099,28 @@ body.dark-mode {
   gap: 10px;
 }
 
+/* POPULAR POSTS WIDGET */
+.popular-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popular-posts-list a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.popular-posts-list div {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.popular-posts-list div:last-child {
+  border-bottom: none;
+}
+
 /* POST TOOLBAR */
 .post-toolbar {
   display: flex;
