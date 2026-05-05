@@ -93,6 +93,27 @@ function initializeDataFiles() {
 
 initializeDataFiles();
 
+// Helper functions for subscribers (migrate simple array -> objects with date)
+function readSubscribers() {
+  try {
+    const raw = fs.readFileSync(subscribersFile, 'utf8');
+    const parsed = JSON.parse(raw || '[]');
+    // If old format (array of strings), migrate to objects
+    if (parsed.length > 0 && typeof parsed[0] === 'string') {
+      const migrated = parsed.map(email => ({ email, date: new Date().toISOString() }));
+      fs.writeFileSync(subscribersFile, JSON.stringify(migrated, null, 2));
+      return migrated;
+    }
+    return parsed;
+  } catch (err) {
+    return [];
+  }
+}
+
+function writeSubscribers(list) {
+  fs.writeFileSync(subscribersFile, JSON.stringify(list, null, 2));
+}
+
 // Email configuration (using test credentials - configure with real service)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -226,33 +247,72 @@ app.post('/api/subscribe', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email' });
     }
 
-    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
-    
+    // Read subscribers (migrates old format automatically)
+    let subscribers = readSubscribers();
+
     // Check if already subscribed
-    if (subscribers.includes(email)) {
+    if (subscribers.find(s => s.email === email)) {
       return res.status(400).json({ error: 'Already subscribed' });
     }
 
-    subscribers.push(email);
-    fs.writeFileSync(subscribersFile, JSON.stringify(subscribers, null, 2));
+    const subscriber = { email, date: new Date().toISOString() };
+    subscribers.push(subscriber);
+    writeSubscribers(subscribers);
 
-    // Send confirmation email (configure with real email service)
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER || 'your-email@gmail.com',
-        to: email,
-        subject: 'Welcome to Efe\'s Blog!',
-        html: `
-          <h2>Welcome to the Blog!</h2>
-          <p>Thank you for subscribing to our newsletter.</p>
-          <p>You'll now receive updates about new posts and insights.</p>
-          <p>Best regards,<br>Efe</p>
-        `
-      });
-    } catch (emailError) {
-      console.log('Email service not configured: ', emailError.message);
-      // Don't fail the subscription if email fails
+    // Optionally add to Mailchimp if configured
+    const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
+    const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_LIST_ID;
+    if (MAILCHIMP_API_KEY && MAILCHIMP_LIST_ID) {
+      try {
+        const dc = MAILCHIMP_API_KEY.split('-')[1];
+        const url = `https://${dc}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`;
+        const body = JSON.stringify({ email_address: email, status: 'subscribed' });
+        const auth = Buffer.from(`any:${MAILCHIMP_API_KEY}`).toString('base64');
+        const mcRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${auth}` }, body });
+        if (!mcRes.ok) {
+          const mcErr = await mcRes.text();
+          console.warn('Mailchimp subscribe failed:', mcErr);
+        }
+      } catch (mcError) {
+        console.warn('Mailchimp integration error:', mcError.message);
+      }
     }
+
+    // Send confirmation email via SendGrid if configured, otherwise nodemailer transporter
+    const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+    const sendConfirmation = async () => {
+      const subject = 'Welcome to the Essence newsletter!';
+      const html = `
+        <h2>Welcome to the Blog!</h2>
+        <p>Thanks for subscribing. You'll receive updates when new posts are published.</p>
+        <p>— Efe</p>
+      `;
+
+      if (SENDGRID_API_KEY && globalThis.fetch) {
+        try {
+          await fetch('https://api.sendgrid.com/v3/mail/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SENDGRID_API_KEY}` },
+            body: JSON.stringify({
+              personalizations: [{ to: [{ email }] }],
+              from: { email: process.env.EMAIL_FROM || 'no-reply@essence-blog.com', name: 'Essence' },
+              subject,
+              content: [{ type: 'text/html', value: html }]
+            })
+          });
+        } catch (sgErr) {
+          console.warn('SendGrid send failed:', sgErr.message);
+        }
+      } else {
+        try {
+          await transporter.sendMail({ from: process.env.EMAIL_USER || 'your-email@gmail.com', to: email, subject, html });
+        } catch (mailErr) {
+          console.warn('Email send failed:', mailErr.message);
+        }
+      }
+    };
+
+    sendConfirmation().catch(() => {});
 
     res.json({ success: true, message: 'Subscribed successfully' });
   } catch (error) {
@@ -535,12 +595,8 @@ app.delete('/api/admin/posts/:id', verifyAdmin, (req, res) => {
 
 app.get('/api/admin/subscribers', verifyAdmin, (req, res) => {
   try {
-    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
-    const subscribersData = subscribers.map((email, index) => ({
-      email,
-      date: new Date().toISOString(),
-      id: index
-    }));
+    const subscribers = readSubscribers();
+    const subscribersData = subscribers.map((s, index) => ({ email: s.email, date: s.date || new Date().toISOString(), id: index }));
     res.json(subscribersData);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch subscribers' });
@@ -550,15 +606,35 @@ app.get('/api/admin/subscribers', verifyAdmin, (req, res) => {
 app.delete('/api/admin/subscribers/:id', verifyAdmin, (req, res) => {
   try {
     const { id } = req.params;
-    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
-    subscribers.splice(parseInt(id), 1);
-    fs.writeFileSync(subscribersFile, JSON.stringify(subscribers, null, 2));
-    
-    // Update analytics
-    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    const subscribers = readSubscribers();
+    const idx = parseInt(id);
+    if (isNaN(idx) || idx < 0 || idx >= subscribers.length) {
+      return res.status(404).json({ error: 'Subscriber not found' });
+    }
+    subscribers.splice(idx, 1);
+    writeSubscribers(subscribers);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete subscriber' });
+  }
+});
+
+// Export subscribers as CSV (admin only)
+app.get('/api/admin/subscribers/export', verifyAdmin, (req, res) => {
+  try {
+    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
+    const rows = ['email,date'];
+    subscribers.forEach(email => {
+      // No stored date per-subscriber, use empty or current
+      rows.push(`${email.replace(/,/g, '')},${new Date().toISOString()}`);
+    });
+
+    const csv = rows.join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="subscribers.csv"');
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to export subscribers' });
   }
 });
 
@@ -628,6 +704,78 @@ app.get('/api/images', (req, res) => {
     res.status(500).json({ error: 'Failed to fetch images' });
   }
 });
+
+// Dynamic RSS feed generated from posts/*.html
+app.get('/rss.xml', (req, res) => {
+  try {
+    const postsDir = path.join(__dirname, 'posts');
+    if (!fs.existsSync(postsDir)) {
+      return res.status(404).send('No posts directory');
+    }
+
+    const files = fs.readdirSync(postsDir).filter(f => f.endsWith('.html'));
+
+    const items = files.map(filename => {
+      const fullPath = path.join(postsDir, filename);
+      const content = fs.readFileSync(fullPath, 'utf8');
+
+      // Extract title
+      let titleMatch = content.match(/<title>([^<]+)<\/title>/i);
+      const title = (titleMatch && titleMatch[1]) ? titleMatch[1].trim() : filename;
+
+      // Try meta description
+      let descMatch = content.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']\s*\/>/i);
+      if (!descMatch) {
+        // fallback to og:description
+        descMatch = content.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']\s*\/>/i);
+      }
+      const description = (descMatch && descMatch[1]) ? descMatch[1].trim() : '';
+
+      // Try to find a datePublished in JSON-LD
+      let dateMatch = content.match(/"datePublished"\s*:\s*"([^"]+)"/i);
+      let pubDate = dateMatch ? new Date(dateMatch[1]) : fs.statSync(fullPath).birthtime;
+
+      return {
+        title,
+        link: `https://essence-blog.com/posts/${filename}`,
+        description,
+        pubDate: new Date(pubDate).toUTCString(),
+        guid: `https://essence-blog.com/posts/${filename}`
+      };
+    });
+
+    const channelTitle = 'Essence';
+    const channelLink = 'https://essence-blog.com/';
+    const channelDesc = 'A modern blog with insights, stories, and ideas on technology and design.';
+
+    let rss = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n  <channel>\n    <title>${channelTitle}</title>\n    <link>${channelLink}</link>\n    <description>${channelDesc}</description>\n    <language>en-us</language>\n    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`;
+
+    items.forEach(item => {
+      rss += `\n    <item>\n      <title>${escapeXml(item.title)}</title>\n      <link>${item.link}</link>\n      <description>${escapeXml(item.description)}</description>\n      <pubDate>${item.pubDate}</pubDate>\n      <guid>${item.guid}</guid>\n    </item>\n`;
+    });
+
+    rss += '  </channel>\n</rss>';
+
+    res.set('Content-Type', 'application/rss+xml');
+    res.send(rss);
+  } catch (error) {
+    console.error('Failed to generate RSS:', error);
+    res.status(500).send('Failed to generate RSS');
+  }
+});
+
+function escapeXml(unsafe) {
+  if (!unsafe) return '';
+  return unsafe.replace(/[<>&'\"]/g, function (c) {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+    }
+  });
+}
 
 // ADMIN: Get all images (admin only)
 app.get('/api/admin/images', verifyAdmin, (req, res) => {

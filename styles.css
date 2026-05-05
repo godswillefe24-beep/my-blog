@@ -1178,6 +1178,34 @@ body.dark-mode {
   font-size: 0.95rem;
 }
 
+/* Admin subscribers page */
+.admin-container {
+  max-width: 900px;
+  margin: 40px auto;
+}
+.admin-login {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.subscriber-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.admin-login input {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.admin-login .btn {
+  padding: 8px 12px;
+}
+
 /* POST TOOLBAR */
 .post-toolbar {
   display: flex;
