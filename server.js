@@ -622,11 +622,12 @@ app.delete('/api/admin/subscribers/:id', verifyAdmin, (req, res) => {
 // Export subscribers as CSV (admin only)
 app.get('/api/admin/subscribers/export', verifyAdmin, (req, res) => {
   try {
-    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
+    const subscribers = readSubscribers();
     const rows = ['email,date'];
-    subscribers.forEach(email => {
-      // No stored date per-subscriber, use empty or current
-      rows.push(`${email.replace(/,/g, '')},${new Date().toISOString()}`);
+    subscribers.forEach(s => {
+      const email = (typeof s === 'string') ? s : (s.email || '');
+      const date = (s && s.date) ? s.date : new Date().toISOString();
+      rows.push(`${String(email).replace(/,/g, '')},${date}`);
     });
 
     const csv = rows.join('\n');
@@ -634,6 +635,7 @@ app.get('/api/admin/subscribers/export', verifyAdmin, (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename="subscribers.csv"');
     res.send(csv);
   } catch (error) {
+    console.error('Export subscribers error:', error);
     res.status(500).json({ error: 'Failed to export subscribers' });
   }
 });
