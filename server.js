@@ -22,6 +22,62 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // ==========================================
+// LOGGING & VALIDATION HELPERS
+// ==========================================
+
+// Simple logger
+function logError(context, error) {
+  console.error(`[ERROR] ${context}:`, error.message);
+}
+
+function logInfo(context, message) {
+  console.log(`[INFO] ${context}: ${message}`);
+}
+
+// Input sanitization
+function sanitizeString(str) {
+  if (typeof str !== 'string') return '';
+  return str.trim().substring(0, 5000); // Cap at 5000 chars
+}
+
+function sanitizeEmail(email) {
+  if (typeof email !== 'string') return '';
+  const trimmed = email.trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : '';
+}
+
+// Rate limiting (simple in-memory)
+const rateLimitStore = new Map();
+function checkRateLimit(key, maxRequests = 10, windowMs = 60000) {
+  const now = Date.now();
+  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + windowMs };
+  
+  if (now > record.resetTime) {
+    rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+    return true;
+  }
+  
+  if (record.count >= maxRequests) {
+    return false;
+  }
+  
+  record.count++;
+  rateLimitStore.set(key, record);
+  return true;
+}
+
+// Rate limit middleware
+function rateLimitMiddleware(req, res, next) {
+  const key = `${req.method}-${req.path}-${req.ip}`;
+  if (!checkRateLimit(key, 30, 60000)) {
+    return res.status(429).json({ error: 'Too many requests, please try again later' });
+  }
+  next();
+}
+
+app.use(rateLimitMiddleware);
+
+// ==========================================
 // IMAGE UPLOAD SETUP
 // ==========================================
 
@@ -146,15 +202,27 @@ app.get('/api/comments/:postId', (req, res) => {
 app.post('/api/comments', (req, res) => {
   try {
     const { postId, name, text } = req.body;
+    
+    // Validate input
+    const sanitizedPostId = sanitizeString(postId);
+    const sanitizedName = sanitizeString(name || 'Anonymous');
+    const sanitizedText = sanitizeString(text);
+    
+    if (!sanitizedPostId || !sanitizedText || sanitizedText.length < 2) {
+      return res.status(400).json({ error: 'Missing or invalid required fields (name, text required, min 2 chars)' });
+    }
+    
+    // Rate limiting per IP for comments
+    const rateLimitKey = `comment-${req.ip}`;
+    if (!checkRateLimit(rateLimitKey, 5, 60000)) {
+      return res.status(429).json({ error: 'Too many comments, please wait before posting again' });
+    }
+    
     const authHeader = req.headers.authorization;
     const token = authHeader?.split(' ')[1];
 
-    if (!postId || !text) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
     let userId = null;
-    let userName = name || 'Anonymous';
+    let userName = sanitizedName;
 
     // If authenticated, get user info
     if (token) {
@@ -163,6 +231,7 @@ app.post('/api/comments', (req, res) => {
         userId = decoded.id;
         userName = decoded.username;
       } catch (e) {
+        logError('Token validation', e);
         // Invalid token, treat as anonymous
       }
     }
@@ -170,10 +239,10 @@ app.post('/api/comments', (req, res) => {
     const comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
     const newComment = {
       id: uuidv4(),
-      postId,
+      postId: sanitizedPostId,
       userId,
       name: userName,
-      text,
+      text: sanitizedText,
       timestamp: new Date().toISOString()
     };
 
@@ -194,9 +263,11 @@ app.post('/api/comments', (req, res) => {
         fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
       }
     }
-
+    
+    logInfo('Comment', `Posted on post ${sanitizedPostId}`);
     res.status(201).json(newComment);
   } catch (error) {
+    logError('Post comment', error);
     res.status(500).json({ error: 'Failed to post comment' });
   }
 });
@@ -274,7 +345,63 @@ app.get('/api/posts', (req, res) => {
     const posts = readPosts();
     res.json(posts);
   } catch (error) {
+    logError('Get posts', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
+  }
+});
+
+// Public: search posts by title or content
+app.get('/api/posts/search/:query', (req, res) => {
+  try {
+    let query = decodeURIComponent(req.params.query || '').toLowerCase();
+    if (query.length < 2) {
+      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    }
+    
+    query = sanitizeString(query);
+    const posts = readPosts();
+    
+    const results = posts.filter(post => 
+      post.title.toLowerCase().includes(query) || 
+      (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+      (post.category && post.category.toLowerCase().includes(query))
+    );
+    
+    logInfo('Search', `Query: "${query}", Results: ${results.length}`);
+    res.json(results);
+  } catch (error) {
+    logError('Search posts', error);
+    res.status(500).json({ error: 'Failed to search posts' });
+  }
+});
+
+// Public: get popular tags/categories
+app.get('/api/tags/popular', (req, res) => {
+  try {
+    const posts = readPosts();
+    const tagCounts = {};
+    
+    // Count categories across all posts
+    posts.forEach(post => {
+      if (post.category) {
+        const tags = post.category.split(',').map(t => t.trim());
+        tags.forEach(tag => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      }
+    });
+    
+    // Sort by count descending and limit to top 10
+    const popularTags = Object.entries(tagCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    
+    logInfo('Popular Tags', `Found ${popularTags.length} tags`);
+    res.json(popularTags);
+  } catch (error) {
+    logError('Popular tags', error);
+    res.status(500).json({ error: 'Failed to fetch popular tags' });
   }
 });
 
@@ -357,11 +484,88 @@ app.delete('/api/admin/posts/:id', verifyAdmin, (req, res) => {
     const postsDir = path.join(__dirname, 'posts');
     const filepath = path.join(postsDir, `${removed.slug}.html`);
     if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-
+    
+    logInfo('Delete post', `Post "${removed.title}" deleted`);
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete post error:', error);
+    logError('Delete post', error);
     res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+// Admin: edit post metadata and content
+app.put('/api/admin/posts/:id', verifyAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, category, content } = req.body;
+    
+    // Validate input
+    if (!title || !content) {
+      return res.status(400).json({ error: 'Title and content are required' });
+    }
+    
+    const sanitizedTitle = sanitizeString(title);
+    const sanitizedCategory = sanitizeString(category || 'Uncategorized');
+    const sanitizedContent = sanitizeString(content);
+    
+    if (!sanitizedTitle || !sanitizedContent) {
+      return res.status(400).json({ error: 'Invalid title or content' });
+    }
+    
+    const posts = readPosts();
+    const postIndex = posts.findIndex(p => p.id === id || p.slug === id);
+    
+    if (postIndex === -1) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+    
+    // Update metadata
+    const post = posts[postIndex];
+    post.title = sanitizedTitle;
+    post.category = sanitizedCategory;
+    post.excerpt = sanitizedContent.slice(0, 160);
+    post.updatedAt = new Date().toISOString();
+    
+    writePosts(posts);
+    
+    // Update HTML file
+    const postsDir = path.join(__dirname, 'posts');
+    const filename = `${post.slug}.html`;
+    const filepath = path.join(postsDir, filename);
+    const metaDescription = post.excerpt.replace(/"/g, "'");
+    const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeXml(post.title)}</title>
+    <meta name="description" content="${escapeXml(metaDescription)}" />
+    <meta property="og:title" content="${escapeXml(post.title)}" />
+    <meta property="og:description" content="${escapeXml(metaDescription)}" />
+    <script type="application/ld+json">{ "@context": "https://schema.org", "@type": "BlogPosting", "headline": "${escapeXml(post.title)}", "datePublished": "${post.date}" }</script>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <article class="post">
+      <header>
+        <h1>${escapeXml(post.title)}</h1>
+        <p class="meta">${new Date(post.date).toLocaleString()} • ${escapeXml(post.category)}</p>
+      </header>
+      <section class="content">
+        ${sanitizedContent}
+      </section>
+    </article>
+    <script src="/script.js" defer></script>
+  </body>
+</html>`;
+
+    fs.writeFileSync(filepath, html, 'utf8');
+    
+    logInfo('Edit post', `Post "${sanitizedTitle}" updated`);
+    res.json({ success: true, id, title: sanitizedTitle });
+  } catch (error) {
+    logError('Edit post', error);
+    res.status(500).json({ error: 'Failed to edit post' });
   }
 });
 
@@ -400,21 +604,31 @@ app.post('/api/subscribe', async (req, res) => {
   try {
     const { email } = req.body;
     
-    if (!email || !email.includes('@')) {
-      return res.status(400).json({ error: 'Invalid email' });
+    // Validate email
+    const sanitizedEmail = sanitizeEmail(email);
+    if (!sanitizedEmail) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+    
+    // Rate limiting per IP for subscriptions
+    const rateLimitKey = `subscribe-${req.ip}`;
+    if (!checkRateLimit(rateLimitKey, 3, 3600000)) { // 3 per hour
+      return res.status(429).json({ error: 'Too many subscription attempts, please try again later' });
     }
 
     // Read subscribers (migrates old format automatically)
     let subscribers = readSubscribers();
 
     // Check if already subscribed
-    if (subscribers.find(s => s.email === email)) {
-      return res.status(400).json({ error: 'Already subscribed' });
+    if (subscribers.find(s => s.email === sanitizedEmail)) {
+      return res.status(400).json({ error: 'Email already subscribed' });
     }
 
-    const subscriber = { email, date: new Date().toISOString() };
+    const subscriber = { email: sanitizedEmail, date: new Date().toISOString() };
     subscribers.push(subscriber);
     writeSubscribers(subscribers);
+    
+    logInfo('Subscribe', `New subscriber: ${sanitizedEmail}`);
 
     // Optionally add to Mailchimp if configured
     const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
@@ -423,15 +637,15 @@ app.post('/api/subscribe', async (req, res) => {
       try {
         const dc = MAILCHIMP_API_KEY.split('-')[1];
         const url = `https://${dc}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`;
-        const body = JSON.stringify({ email_address: email, status: 'subscribed' });
+        const body = JSON.stringify({ email_address: sanitizedEmail, status: 'subscribed' });
         const auth = Buffer.from(`any:${MAILCHIMP_API_KEY}`).toString('base64');
         const mcRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${auth}` }, body });
         if (!mcRes.ok) {
           const mcErr = await mcRes.text();
-          console.warn('Mailchimp subscribe failed:', mcErr);
+          logError('Mailchimp subscribe', new Error(mcErr));
         }
       } catch (mcError) {
-        console.warn('Mailchimp integration error:', mcError.message);
+        logError('Mailchimp integration', mcError);
       }
     }
 
@@ -451,20 +665,20 @@ app.post('/api/subscribe', async (req, res) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SENDGRID_API_KEY}` },
             body: JSON.stringify({
-              personalizations: [{ to: [{ email }] }],
+              personalizations: [{ to: [{ email: sanitizedEmail }] }],
               from: { email: process.env.EMAIL_FROM || 'no-reply@essence-blog.com', name: 'Essence' },
               subject,
               content: [{ type: 'text/html', value: html }]
             })
           });
         } catch (sgErr) {
-          console.warn('SendGrid send failed:', sgErr.message);
+          logError('SendGrid send', sgErr);
         }
       } else {
         try {
-          await transporter.sendMail({ from: process.env.EMAIL_USER || 'your-email@gmail.com', to: email, subject, html });
+          await transporter.sendMail({ from: process.env.EMAIL_USER || 'your-email@gmail.com', to: sanitizedEmail, subject, html });
         } catch (mailErr) {
-          console.warn('Email send failed:', mailErr.message);
+          logError('Email send', mailErr);
         }
       }
     };
@@ -473,6 +687,7 @@ app.post('/api/subscribe', async (req, res) => {
 
     res.json({ success: true, message: 'Subscribed successfully' });
   } catch (error) {
+    logError('Subscribe', error);
     res.status(500).json({ error: 'Failed to subscribe' });
   }
 });

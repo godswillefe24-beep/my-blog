@@ -414,7 +414,59 @@ if (backToTop) {
 
 const searchInput = document.querySelector('.search-input');
 const filterButtons = document.querySelectorAll('.filter-btn');
+const tagsContainer = document.getElementById('popular-tags') || document.querySelector('.sidebar-widget .tags');
 let currentFilter = 'all';
+
+// Load popular tags from API
+async function loadPopularTags() {
+  try {
+    const response = await fetch(`${API_BASE}/tags/popular`);
+    if (response.ok) {
+      const tags = await response.json();
+      if (tagsContainer && tags.length > 0) {
+        tagsContainer.innerHTML = tags.map(tag => 
+          `<a href="#" class="tag" data-tag="${tag.name.toLowerCase()}" title="${tag.count} post${tag.count > 1 ? 's' : ''}">${tag.name}</a>`
+        ).join('');
+        
+        // Add click handlers to dynamically loaded tags
+        setupTagClickHandlers();
+      }
+    }
+  } catch (e) {
+    console.log('Could not load popular tags:', e.message);
+  }
+}
+
+function setupTagClickHandlers() {
+  document.querySelectorAll('.sidebar-widget .tags .tag').forEach(tag => {
+    tag.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tagName = tag.dataset.tag;
+      filterByTag(tagName);
+    });
+  });
+}
+
+function filterByTag(tagName) {
+  currentFilter = tagName;
+  filterAndSearchPosts();
+  
+  // Highlight the active tag
+  document.querySelectorAll('.sidebar-widget .tags .tag').forEach(tag => {
+    tag.classList.remove('active');
+    if (tag.dataset.tag === tagName) {
+      tag.classList.add('active');
+    }
+  });
+  
+  showNotification(`Filtering by: ${tagName}`, 'info');
+  
+  // Scroll to posts
+  const postsSection = document.querySelector('.posts-section');
+  if (postsSection) {
+    postsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
 
 function filterAndSearchPosts() {
   const searchTerm = searchInput?.value.toLowerCase() || '';
@@ -426,7 +478,7 @@ function filterAndSearchPosts() {
     const excerpt = post.querySelector('.post-excerpt')?.textContent.toLowerCase() || '';
 
     const matchesSearch = title.includes(searchTerm) || excerpt.includes(searchTerm);
-    const matchesFilter = currentFilter === 'all' || category.includes(currentFilter.toLowerCase());
+    const matchesFilter = currentFilter === 'all' || category.includes(currentFilter);
 
     if (matchesSearch && matchesFilter) {
       post.style.display = 'block';
@@ -450,6 +502,11 @@ filterButtons.forEach(btn => {
     showNotification(`Filtering by: ${currentFilter === 'all' ? 'All Posts' : currentFilter}`, 'info');
   });
 });
+
+// Load popular tags on page load
+document.addEventListener('DOMContentLoaded', () => {
+  loadPopularTags();
+}, { once: true });
 
 // ==========================================
 // SHARE BUTTONS

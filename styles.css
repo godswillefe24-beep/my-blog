@@ -839,16 +839,25 @@ body.dark-mode {
 
 .featured-visual {
   position: relative;
-  max-width: 300px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 2rem;
 }
 
 .featured-image {
-  width: 500px;
+  width: 100%;
   height: auto;
-  max-width: 500px;
-  border-radius: 8px;
+  max-width: 100%;
+  aspect-ratio: 16 / 10;
   object-fit: cover;
+  border-radius: 12px;
+  box-shadow: var(--shadow-hover);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.featured-image:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-hover);
 }
 
 .placeholder-image {
@@ -1366,6 +1375,13 @@ body.dark-mode {
 .tag:hover {
   background: var(--accent-dark);
   transform: scale(1.05);
+}
+
+.tag.active {
+  background: var(--accent-dark);
+  box-shadow: 0 0 0 3px var(--accent-light);
+  transform: scale(1.08);
+  font-weight: 600;
 }
 
 /* EMAIL INPUT & BUTTON */
