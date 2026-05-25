@@ -37,7 +37,6 @@
       content="A modern blog with insights, stories, and ideas"
     />
 
-    <meta name="theme-color" content="#3b82f6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -90,6 +89,8 @@
       }
     </script>
   </head>
+
+  <div id="posts-container"></div>
 
   <body>
     <!-- Reading Progress Bar -->
@@ -387,6 +388,42 @@
               </p>
               <a href="posts/post5.html" class="post-link">Read More →</a>
             </article>
+
+            <article class="post-card">
+              <div class="post-header">
+                <div class="post-category">Technology</div>
+              </div>
+              <h3>
+                <a href="posts/post6.html"
+                  >The Biggest Tech Trends Defining 2026</a
+                >
+              </h3>
+              <p class="post-meta">May 16, 2026</p>
+              <p class="post-excerpt">
+                Technology in 2026 is moving faster than ever, reshaping the way
+                people work, communicate, shop, and live.
+              </p>
+              <a href="posts/post6.html" class="post-link">Read More →</a>
+            </article>
+
+            <article class="post-card">
+              <div class="post-header">
+                <div class="post-category">Technology</div>
+              </div>
+              <h3>
+                <a href="posts/post7.html"
+                  >Latest Technology Trends Shaping the Future in 2026</a
+                >
+              </h3>
+              <p class="post-meta">May 16, 2026</p>
+              <p class="post-excerpt">
+                Latest Technology Trends Shaping the Future in 2026 In 2026, the
+                most impactful technology trends are no longer just emerging
+                concepts—they are actively reshaping the global economy and
+                redefining competitive advantage.
+              </p>
+              <a href="posts/post7.html" class="post-link">Read More →</a>
+            </article>
           </div>
         </section>
 
@@ -413,7 +450,7 @@
           <div class="sidebar-widget">
             <h3>📝 Recent Posts</h3>
             <div class="recent-posts-list" id="recent-posts">
-              <p style="color: var(--muted); font-size: 0.9rem">
+              <p class="sidebar-loading-text">
                 Loading recent posts...
               </p>
             </div>
@@ -430,7 +467,7 @@
           <div class="sidebar-widget">
             <h3>🔥 Popular This Month</h3>
             <div class="popular-posts-list" id="popular-posts">
-              <p style="color: var(--muted); font-size: 0.9rem">
+              <p class="sidebar-loading-text">
                 Loading popular posts...
               </p>
             </div>

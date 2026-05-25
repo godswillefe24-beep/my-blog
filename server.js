@@ -201,6 +201,41 @@ app.post('/api/comments', (req, res) => {
   }
 });
 
+// API: Get all comments (admin only)
+app.get('/api/admin/comments', verifyAdmin, (req, res) => {
+  try {
+    const comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
+    res.json(comments);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch comments' });
+  }
+});
+
+// API: Delete a comment (admin only)
+app.delete('/api/admin/comments/:id', verifyAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    let comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
+    const index = comments.findIndex(c => c.id === id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+    
+    comments.splice(index, 1);
+    fs.writeFileSync(commentsFile, JSON.stringify(comments, null, 2));
+    
+    // Update analytics
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    analytics.totalComments = Math.max(0, analytics.totalComments - 1);
+    fs.writeFileSync(analyticsFile, JSON.stringify(analytics, null, 2));
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete comment' });
+  }
+});
+
 // API: Get analytics
 app.get('/api/analytics', (req, res) => {
   try {
@@ -697,29 +732,7 @@ function verifyAdmin(req, res, next) {
   }
 }
 
-// ==========================================
-// ADMIN: POSTS MANAGEMENT
-// ==========================================
 
-app.post('/api/admin/posts', verifyAdmin, (req, res) => {
-  try {
-    const { id, title, category, content } = req.body;
-    // In a real app, save to database
-    res.json({ success: true, id });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to save post' });
-  }
-});
-
-app.delete('/api/admin/posts/:id', verifyAdmin, (req, res) => {
-  try {
-    const { id } = req.params;
-    // In a real app, delete from database
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete post' });
-  }
-});
 
 // ==========================================
 // ADMIN: SUBSCRIBERS MANAGEMENT

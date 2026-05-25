@@ -294,7 +294,9 @@ async function deletePost(postId) {
 
 async function loadComments() {
   try {
-    const response = await fetch(`${API}/comments`);
+    const response = await fetch(`${API}/admin/comments`, {
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
     if (response.ok) {
       const comments = await response.json();
       const container = document.getElementById('comments-list');
@@ -303,7 +305,7 @@ async function loadComments() {
           <div class="item-info">
             <h3>${comment.name}</h3>
             <p>${comment.text.substring(0, 100)}...</p>
-            <p style="font-size: 0.8rem; margin-top: 5px;">${new Date(comment.date).toLocaleDateString()}</p>
+            <p style="font-size: 0.8rem; margin-top: 5px;">${new Date(comment.timestamp).toLocaleDateString()}</p>
           </div>
           <div class="item-actions">
             <button class="btn btn-sm btn-secondary" onclick="deleteComment('${comment.id}')">Delete</button>
@@ -321,7 +323,7 @@ async function deleteComment(commentId) {
   if (!confirm('Are you sure you want to delete this comment?')) return;
   
   try {
-    const response = await fetch(`${API}/comments/${commentId}`, {
+    const response = await fetch(`${API}/admin/comments/${commentId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${adminToken}` }
     });

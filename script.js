@@ -1389,9 +1389,9 @@ function loadRecentPosts() {
   if (!recentPostsContainer) return;
 
   const posts = [
-    { title: 'Latest Technology News and Innovations', url: 'posts/post2.html' },
-    { title: 'Design Principles for Better UX', url: 'posts/post3.html' },
-    { title: 'Why I Started This Blog', url: 'posts/post4.html' }
+    { title: 'Latest Technology Trends Shaping the Future in 2026', url: 'posts/post7.html' },
+    { title: 'The Biggest Tech Trends Defining 2026', url: 'posts/post6.html' },
+    { title: 'How Computers Are Made', url: 'posts/post5.html' }
   ];
 
   const html = posts.map(post => `
@@ -1421,8 +1421,9 @@ function loadPopularPosts() {
   // Simple static popular list (replace with analytics-driven data later)
   const popular = [
     { title: 'Welcome to my blog', url: 'posts/post1.html' },
-    { title: 'Latest Technology News and Innovations', url: 'posts/post2.html' },
-    { title: 'Design Principles for Better UX', url: 'posts/post3.html' }
+    { title: 'How Computers Are Made', url: 'posts/post5.html' },
+    { title: 'Latest Technology Trends Shaping the Future in 2026', url: 'posts/post7.html' },
+    { title: 'The Biggest Tech Trends Defining 2026', url: 'posts/post6.html' }
   ];
 
   container.innerHTML = popular.map(p => `
