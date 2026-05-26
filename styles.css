@@ -118,7 +118,7 @@ body.dark-mode {
 /* THEME TOGGLE BUTTON */
 .theme-toggle {
   position: fixed;
-  top: 20px;
+  top: 15px;
   right: 20px;
   width: 45px;
   height: 45px;
@@ -242,7 +242,7 @@ body.dark-mode {
     rgba(102, 126, 234, 0.1),
     rgba(118, 75, 162, 0.1)
   );
-  padding: 15px;
+  padding: 10px;
   border-radius: 10px;
   text-align: center;
   border: 1px solid var(--border);
