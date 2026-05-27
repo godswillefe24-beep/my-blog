@@ -1,14 +1,13 @@
-import express from 'express';
-import cors from 'cors';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
-import nodemailer from 'nodemailer';
-import multer from 'multer';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import express from "express";
+import cors from "cors";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import fs from "fs";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+import nodemailer from "nodemailer";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -36,31 +35,34 @@ function logInfo(context, message) {
 
 // Input sanitization
 function sanitizeString(str) {
-  if (typeof str !== 'string') return '';
+  if (typeof str !== "string") return "";
   return str.trim().substring(0, 5000); // Cap at 5000 chars
 }
 
 function sanitizeEmail(email) {
-  if (typeof email !== 'string') return '';
+  if (typeof email !== "string") return "";
   const trimmed = email.trim().toLowerCase();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : '';
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : "";
 }
 
 // Rate limiting (simple in-memory)
 const rateLimitStore = new Map();
 function checkRateLimit(key, maxRequests = 10, windowMs = 60000) {
   const now = Date.now();
-  const record = rateLimitStore.get(key) || { count: 0, resetTime: now + windowMs };
-  
+  const record = rateLimitStore.get(key) || {
+    count: 0,
+    resetTime: now + windowMs,
+  };
+
   if (now > record.resetTime) {
     rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
     return true;
   }
-  
+
   if (record.count >= maxRequests) {
     return false;
   }
-  
+
   record.count++;
   rateLimitStore.set(key, record);
   return true;
@@ -71,61 +73,29 @@ function rateLimitMiddleware(req, res, next) {
   const key = `${req.method}-${req.path}-${req.ip}`;
   // Allow 100 requests per minute for normal browsing
   if (!checkRateLimit(key, 100, 60000)) {
-    return res.status(429).json({ error: 'Too many requests, please try again later' });
+    return res
+      .status(429)
+      .json({ error: "Too many requests, please try again later" });
   }
   next();
 }
 
 app.use(rateLimitMiddleware);
 
-// ==========================================
-// IMAGE UPLOAD SETUP
-// ==========================================
-
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const filename = `${uuidv4()}${ext}`;
-    cb(null, filename);
-  }
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only images allowed.'));
-    }
-  }
-});
-
-app.use('/uploads', express.static(uploadsDir));
-
 // Database file paths
-const commentsFile = path.join(__dirname, 'data', 'comments.json');
-const analyticsFile = path.join(__dirname, 'data', 'analytics.json');
-const subscribersFile = path.join(__dirname, 'data', 'subscribers.json');
-const postsFile = path.join(__dirname, 'data', 'posts.json');
-const usersFile = path.join(__dirname, 'data', 'users.json');
-const settingsFile = path.join(__dirname, 'data', 'settings.json');
+const commentsFile = path.join(__dirname, "data", "comments.json");
+const analyticsFile = path.join(__dirname, "data", "analytics.json");
+const subscribersFile = path.join(__dirname, "data", "subscribers.json");
+const postsFile = path.join(__dirname, "data", "posts.json");
+const usersFile = path.join(__dirname, "data", "users.json");
+const settingsFile = path.join(__dirname, "data", "settings.json");
 
 // JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 // Initialize data directory
-const dataDir = path.join(__dirname, 'data');
+const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -136,11 +106,18 @@ function initializeDataFiles() {
     fs.writeFileSync(commentsFile, JSON.stringify([], null, 2));
   }
   if (!fs.existsSync(analyticsFile)) {
-    fs.writeFileSync(analyticsFile, JSON.stringify({
-      postViews: {},
-      totalLikes: 0,
-      totalComments: 0
-    }, null, 2));
+    fs.writeFileSync(
+      analyticsFile,
+      JSON.stringify(
+        {
+          postViews: {},
+          totalLikes: 0,
+          totalComments: 0,
+        },
+        null,
+        2,
+      ),
+    );
   }
   if (!fs.existsSync(subscribersFile)) {
     fs.writeFileSync(subscribersFile, JSON.stringify([], null, 2));
@@ -152,7 +129,18 @@ function initializeDataFiles() {
     fs.writeFileSync(postsFile, JSON.stringify([], null, 2));
   }
   if (!fs.existsSync(settingsFile)) {
-    fs.writeFileSync(settingsFile, JSON.stringify({ title: 'Essence', description: 'A modern blog', adminPassword: (process.env.ADMIN_PASSWORD || 'admin123') }, null, 2));
+    fs.writeFileSync(
+      settingsFile,
+      JSON.stringify(
+        {
+          title: "Essence",
+          description: "A modern blog",
+          adminPassword: process.env.ADMIN_PASSWORD || "admin123",
+        },
+        null,
+        2,
+      ),
+    );
   }
 }
 
@@ -161,11 +149,14 @@ initializeDataFiles();
 // Helper functions for subscribers (migrate simple array -> objects with date)
 function readSubscribers() {
   try {
-    const raw = fs.readFileSync(subscribersFile, 'utf8');
-    const parsed = JSON.parse(raw || '[]');
+    const raw = fs.readFileSync(subscribersFile, "utf8");
+    const parsed = JSON.parse(raw || "[]");
     // If old format (array of strings), migrate to objects
-    if (parsed.length > 0 && typeof parsed[0] === 'string') {
-      const migrated = parsed.map(email => ({ email, date: new Date().toISOString() }));
+    if (parsed.length > 0 && typeof parsed[0] === "string") {
+      const migrated = parsed.map((email) => ({
+        email,
+        date: new Date().toISOString(),
+      }));
       fs.writeFileSync(subscribersFile, JSON.stringify(migrated, null, 2));
       return migrated;
     }
@@ -181,46 +172,51 @@ function writeSubscribers(list) {
 
 // Email configuration (using test credentials - configure with real service)
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASSWORD || 'your-app-password'
-  }
+    user: process.env.EMAIL_USER || "your-email@gmail.com",
+    pass: process.env.EMAIL_PASSWORD || "your-app-password",
+  },
 });
 
 // API: Get all comments for a post
-app.get('/api/comments/:postId', (req, res) => {
+app.get("/api/comments/:postId", (req, res) => {
   try {
-    const comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
-    const postComments = comments.filter(c => c.postId === req.params.postId);
+    const comments = JSON.parse(fs.readFileSync(commentsFile, "utf8"));
+    const postComments = comments.filter((c) => c.postId === req.params.postId);
     res.json(postComments);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch comments' });
+    res.status(500).json({ error: "Failed to fetch comments" });
   }
 });
 
 // API: Post a new comment
-app.post('/api/comments', (req, res) => {
+app.post("/api/comments", (req, res) => {
   try {
     const { postId, name, text } = req.body;
-    
+
     // Validate input
     const sanitizedPostId = sanitizeString(postId);
-    const sanitizedName = sanitizeString(name || 'Anonymous');
+    const sanitizedName = sanitizeString(name || "Anonymous");
     const sanitizedText = sanitizeString(text);
-    
+
     if (!sanitizedPostId || !sanitizedText || sanitizedText.length < 2) {
-      return res.status(400).json({ error: 'Missing or invalid required fields (name, text required, min 2 chars)' });
+      return res.status(400).json({
+        error:
+          "Missing or invalid required fields (name, text required, min 2 chars)",
+      });
     }
-    
+
     // Rate limiting per IP for comments
     const rateLimitKey = `comment-${req.ip}`;
     if (!checkRateLimit(rateLimitKey, 5, 60000)) {
-      return res.status(429).json({ error: 'Too many comments, please wait before posting again' });
+      return res
+        .status(429)
+        .json({ error: "Too many comments, please wait before posting again" });
     }
-    
+
     const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
+    const token = authHeader?.split(" ")[1];
 
     let userId = null;
     let userName = sanitizedName;
@@ -232,94 +228,94 @@ app.post('/api/comments', (req, res) => {
         userId = decoded.id;
         userName = decoded.username;
       } catch (e) {
-        logError('Token validation', e);
+        logError("Token validation", e);
         // Invalid token, treat as anonymous
       }
     }
 
-    const comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
+    const comments = JSON.parse(fs.readFileSync(commentsFile, "utf8"));
     const newComment = {
       id: uuidv4(),
       postId: sanitizedPostId,
       userId,
       name: userName,
       text: sanitizedText,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     comments.push(newComment);
     fs.writeFileSync(commentsFile, JSON.stringify(comments, null, 2));
 
     // Update analytics
-    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, "utf8"));
     analytics.totalComments++;
     fs.writeFileSync(analyticsFile, JSON.stringify(analytics, null, 2));
 
     // Update user comment count if authenticated
     if (userId) {
-      const users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-      const userIndex = users.findIndex(u => u.id === userId);
+      const users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
+      const userIndex = users.findIndex((u) => u.id === userId);
       if (userIndex !== -1) {
         users[userIndex].comments++;
         fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
       }
     }
-    
-    logInfo('Comment', `Posted on post ${sanitizedPostId}`);
+
+    logInfo("Comment", `Posted on post ${sanitizedPostId}`);
     res.status(201).json(newComment);
   } catch (error) {
-    logError('Post comment', error);
-    res.status(500).json({ error: 'Failed to post comment' });
+    logError("Post comment", error);
+    res.status(500).json({ error: "Failed to post comment" });
   }
 });
 
 // API: Get all comments (admin only)
-app.get('/api/admin/comments', verifyAdmin, (req, res) => {
+app.get("/api/admin/comments", verifyAdmin, (req, res) => {
   try {
-    const comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
+    const comments = JSON.parse(fs.readFileSync(commentsFile, "utf8"));
     res.json(comments);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch comments' });
+    res.status(500).json({ error: "Failed to fetch comments" });
   }
 });
 
 // API: Delete a comment (admin only)
-app.delete('/api/admin/comments/:id', verifyAdmin, (req, res) => {
+app.delete("/api/admin/comments/:id", verifyAdmin, (req, res) => {
   try {
     const { id } = req.params;
-    let comments = JSON.parse(fs.readFileSync(commentsFile, 'utf8'));
-    const index = comments.findIndex(c => c.id === id);
-    
+    let comments = JSON.parse(fs.readFileSync(commentsFile, "utf8"));
+    const index = comments.findIndex((c) => c.id === id);
+
     if (index === -1) {
-      return res.status(404).json({ error: 'Comment not found' });
+      return res.status(404).json({ error: "Comment not found" });
     }
-    
+
     comments.splice(index, 1);
     fs.writeFileSync(commentsFile, JSON.stringify(comments, null, 2));
-    
+
     // Update analytics
-    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, "utf8"));
     analytics.totalComments = Math.max(0, analytics.totalComments - 1);
     fs.writeFileSync(analyticsFile, JSON.stringify(analytics, null, 2));
-    
+
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete comment' });
+    res.status(500).json({ error: "Failed to delete comment" });
   }
 });
 
 // API: Get analytics
-app.get('/api/analytics', (req, res) => {
+app.get("/api/analytics", (req, res) => {
   try {
-    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
-    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
-    
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, "utf8"));
+    const subscribers = JSON.parse(fs.readFileSync(subscribersFile, "utf8"));
+
     res.json({
       ...analytics,
-      totalSubscribers: subscribers.length
+      totalSubscribers: subscribers.length,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch analytics' });
+    res.status(500).json({ error: "Failed to fetch analytics" });
   }
 });
 
@@ -329,8 +325,8 @@ app.get('/api/analytics', (req, res) => {
 
 function readPosts() {
   try {
-    const raw = fs.readFileSync(postsFile, 'utf8');
-    return JSON.parse(raw || '[]');
+    const raw = fs.readFileSync(postsFile, "utf8");
+    return JSON.parse(raw || "[]");
   } catch (err) {
     return [];
   }
@@ -341,77 +337,80 @@ function writePosts(list) {
 }
 
 // Public: list posts metadata
-app.get('/api/posts', (req, res) => {
+app.get("/api/posts", (req, res) => {
   try {
     const posts = readPosts();
     res.json(posts);
   } catch (error) {
-    logError('Get posts', error);
-    res.status(500).json({ error: 'Failed to fetch posts' });
+    logError("Get posts", error);
+    res.status(500).json({ error: "Failed to fetch posts" });
   }
 });
 
 // Public: search posts by title or content
-app.get('/api/posts/search/:query', (req, res) => {
+app.get("/api/posts/search/:query", (req, res) => {
   try {
-    let query = decodeURIComponent(req.params.query || '').toLowerCase();
+    let query = decodeURIComponent(req.params.query || "").toLowerCase();
     if (query.length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+      return res
+        .status(400)
+        .json({ error: "Search query must be at least 2 characters" });
     }
-    
+
     query = sanitizeString(query);
     const posts = readPosts();
-    
-    const results = posts.filter(post => 
-      post.title.toLowerCase().includes(query) || 
-      (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
-      (post.category && post.category.toLowerCase().includes(query))
+
+    const results = posts.filter(
+      (post) =>
+        post.title.toLowerCase().includes(query) ||
+        (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+        (post.category && post.category.toLowerCase().includes(query)),
     );
-    
-    logInfo('Search', `Query: "${query}", Results: ${results.length}`);
+
+    logInfo("Search", `Query: "${query}", Results: ${results.length}`);
     res.json(results);
   } catch (error) {
-    logError('Search posts', error);
-    res.status(500).json({ error: 'Failed to search posts' });
+    logError("Search posts", error);
+    res.status(500).json({ error: "Failed to search posts" });
   }
 });
 
 // Public: get popular tags/categories
-app.get('/api/tags/popular', (req, res) => {
+app.get("/api/tags/popular", (req, res) => {
   try {
     const posts = readPosts();
     const tagCounts = {};
-    
+
     // Count categories across all posts
-    posts.forEach(post => {
+    posts.forEach((post) => {
       if (post.category) {
-        const tags = post.category.split(',').map(t => t.trim());
-        tags.forEach(tag => {
+        const tags = post.category.split(",").map((t) => t.trim());
+        tags.forEach((tag) => {
           tagCounts[tag] = (tagCounts[tag] || 0) + 1;
         });
       }
     });
-    
+
     // Sort by count descending and limit to top 10
     const popularTags = Object.entries(tagCounts)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-    
-    logInfo('Popular Tags', `Found ${popularTags.length} tags`);
+
+    logInfo("Popular Tags", `Found ${popularTags.length} tags`);
     res.json(popularTags);
   } catch (error) {
-    logError('Popular tags', error);
-    res.status(500).json({ error: 'Failed to fetch popular tags' });
+    logError("Popular tags", error);
+    res.status(500).json({ error: "Failed to fetch popular tags" });
   }
 });
 
 // Admin: create post (persist metadata and write HTML file)
-app.post('/api/admin/posts', verifyAdmin, (req, res) => {
+app.post("/api/admin/posts", verifyAdmin, (req, res) => {
   try {
     const { id, title, category, content, date } = req.body;
     if (!id || !title || !content) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     const posts = readPosts();
@@ -419,17 +418,17 @@ app.post('/api/admin/posts', verifyAdmin, (req, res) => {
     const postMeta = {
       id,
       title,
-      category: category || 'Uncategorized',
+      category: category || "Uncategorized",
       date: date || new Date().toISOString(),
       slug: id,
-      excerpt: (content || '').slice(0, 160)
+      excerpt: (content || "").slice(0, 160),
     };
 
     posts.unshift(postMeta);
     writePosts(posts);
 
     // Ensure posts directory exists
-    const postsDir = path.join(__dirname, 'posts');
+    const postsDir = path.join(__dirname, "posts");
     if (!fs.existsSync(postsDir)) fs.mkdirSync(postsDir, { recursive: true });
 
     // Build a simple HTML post file
@@ -462,75 +461,75 @@ app.post('/api/admin/posts', verifyAdmin, (req, res) => {
   </body>
 </html>`;
 
-    fs.writeFileSync(filepath, html, 'utf8');
+    fs.writeFileSync(filepath, html, "utf8");
 
     res.json({ success: true, id, url: `/posts/${filename}` });
   } catch (error) {
-    console.error('Create post error:', error);
-    res.status(500).json({ error: 'Failed to save post' });
+    console.error("Create post error:", error);
+    res.status(500).json({ error: "Failed to save post" });
   }
 });
 
 // Admin: delete post (remove metadata and file)
-app.delete('/api/admin/posts/:id', verifyAdmin, (req, res) => {
+app.delete("/api/admin/posts/:id", verifyAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const posts = readPosts();
-    const idx = posts.findIndex(p => p.id === id || p.slug === id);
-    if (idx === -1) return res.status(404).json({ error: 'Post not found' });
+    const idx = posts.findIndex((p) => p.id === id || p.slug === id);
+    if (idx === -1) return res.status(404).json({ error: "Post not found" });
 
     const removed = posts.splice(idx, 1)[0];
     writePosts(posts);
 
-    const postsDir = path.join(__dirname, 'posts');
+    const postsDir = path.join(__dirname, "posts");
     const filepath = path.join(postsDir, `${removed.slug}.html`);
     if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-    
-    logInfo('Delete post', `Post "${removed.title}" deleted`);
+
+    logInfo("Delete post", `Post "${removed.title}" deleted`);
     res.json({ success: true });
   } catch (error) {
-    logError('Delete post', error);
-    res.status(500).json({ error: 'Failed to delete post' });
+    logError("Delete post", error);
+    res.status(500).json({ error: "Failed to delete post" });
   }
 });
 
 // Admin: edit post metadata and content
-app.put('/api/admin/posts/:id', verifyAdmin, (req, res) => {
+app.put("/api/admin/posts/:id", verifyAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const { title, category, content } = req.body;
-    
+
     // Validate input
     if (!title || !content) {
-      return res.status(400).json({ error: 'Title and content are required' });
+      return res.status(400).json({ error: "Title and content are required" });
     }
-    
+
     const sanitizedTitle = sanitizeString(title);
-    const sanitizedCategory = sanitizeString(category || 'Uncategorized');
+    const sanitizedCategory = sanitizeString(category || "Uncategorized");
     const sanitizedContent = sanitizeString(content);
-    
+
     if (!sanitizedTitle || !sanitizedContent) {
-      return res.status(400).json({ error: 'Invalid title or content' });
+      return res.status(400).json({ error: "Invalid title or content" });
     }
-    
+
     const posts = readPosts();
-    const postIndex = posts.findIndex(p => p.id === id || p.slug === id);
-    
+    const postIndex = posts.findIndex((p) => p.id === id || p.slug === id);
+
     if (postIndex === -1) {
-      return res.status(404).json({ error: 'Post not found' });
+      return res.status(404).json({ error: "Post not found" });
     }
-    
+
     // Update metadata
     const post = posts[postIndex];
     post.title = sanitizedTitle;
     post.category = sanitizedCategory;
     post.excerpt = sanitizedContent.slice(0, 160);
     post.updatedAt = new Date().toISOString();
-    
+
     writePosts(posts);
-    
+
     // Update HTML file
-    const postsDir = path.join(__dirname, 'posts');
+    const postsDir = path.join(__dirname, "posts");
     const filename = `${post.slug}.html`;
     const filepath = path.join(postsDir, filename);
     const metaDescription = post.excerpt.replace(/"/g, "'");
@@ -560,20 +559,20 @@ app.put('/api/admin/posts/:id', verifyAdmin, (req, res) => {
   </body>
 </html>`;
 
-    fs.writeFileSync(filepath, html, 'utf8');
-    
-    logInfo('Edit post', `Post "${sanitizedTitle}" updated`);
+    fs.writeFileSync(filepath, html, "utf8");
+
+    logInfo("Edit post", `Post "${sanitizedTitle}" updated`);
     res.json({ success: true, id, title: sanitizedTitle });
   } catch (error) {
-    logError('Edit post', error);
-    res.status(500).json({ error: 'Failed to edit post' });
+    logError("Edit post", error);
+    res.status(500).json({ error: "Failed to edit post" });
   }
 });
 
 // API: Record page view
-app.post('/api/analytics/view/:postId', (req, res) => {
+app.post("/api/analytics/view/:postId", (req, res) => {
   try {
-    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, "utf8"));
     const postId = req.params.postId;
 
     if (!analytics.postViews[postId]) {
@@ -584,76 +583,92 @@ app.post('/api/analytics/view/:postId', (req, res) => {
     fs.writeFileSync(analyticsFile, JSON.stringify(analytics, null, 2));
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to record view' });
+    res.status(500).json({ error: "Failed to record view" });
   }
 });
 
 // API: Like a post
-app.post('/api/analytics/like', (req, res) => {
+app.post("/api/analytics/like", (req, res) => {
   try {
-    const analytics = JSON.parse(fs.readFileSync(analyticsFile, 'utf8'));
+    const analytics = JSON.parse(fs.readFileSync(analyticsFile, "utf8"));
     analytics.totalLikes++;
     fs.writeFileSync(analyticsFile, JSON.stringify(analytics, null, 2));
     res.json({ totalLikes: analytics.totalLikes });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to record like' });
+    res.status(500).json({ error: "Failed to record like" });
   }
 });
 
 // API: Subscribe to newsletter
-app.post('/api/subscribe', async (req, res) => {
+app.post("/api/subscribe", async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     // Validate email
     const sanitizedEmail = sanitizeEmail(email);
     if (!sanitizedEmail) {
-      return res.status(400).json({ error: 'Invalid email address' });
+      return res.status(400).json({ error: "Invalid email address" });
     }
-    
+
     // Rate limiting per IP for subscriptions
     const rateLimitKey = `subscribe-${req.ip}`;
-    if (!checkRateLimit(rateLimitKey, 3, 3600000)) { // 3 per hour
-      return res.status(429).json({ error: 'Too many subscription attempts, please try again later' });
+    if (!checkRateLimit(rateLimitKey, 3, 3600000)) {
+      // 3 per hour
+      return res.status(429).json({
+        error: "Too many subscription attempts, please try again later",
+      });
     }
 
     // Read subscribers (migrates old format automatically)
     let subscribers = readSubscribers();
 
     // Check if already subscribed
-    if (subscribers.find(s => s.email === sanitizedEmail)) {
-      return res.status(400).json({ error: 'Email already subscribed' });
+    if (subscribers.find((s) => s.email === sanitizedEmail)) {
+      return res.status(400).json({ error: "Email already subscribed" });
     }
 
-    const subscriber = { email: sanitizedEmail, date: new Date().toISOString() };
+    const subscriber = {
+      email: sanitizedEmail,
+      date: new Date().toISOString(),
+    };
     subscribers.push(subscriber);
     writeSubscribers(subscribers);
-    
-    logInfo('Subscribe', `New subscriber: ${sanitizedEmail}`);
+
+    logInfo("Subscribe", `New subscriber: ${sanitizedEmail}`);
 
     // Optionally add to Mailchimp if configured
     const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
     const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_LIST_ID;
     if (MAILCHIMP_API_KEY && MAILCHIMP_LIST_ID) {
       try {
-        const dc = MAILCHIMP_API_KEY.split('-')[1];
+        const dc = MAILCHIMP_API_KEY.split("-")[1];
         const url = `https://${dc}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`;
-        const body = JSON.stringify({ email_address: sanitizedEmail, status: 'subscribed' });
-        const auth = Buffer.from(`any:${MAILCHIMP_API_KEY}`).toString('base64');
-        const mcRes = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${auth}` }, body });
+        const body = JSON.stringify({
+          email_address: sanitizedEmail,
+          status: "subscribed",
+        });
+        const auth = Buffer.from(`any:${MAILCHIMP_API_KEY}`).toString("base64");
+        const mcRes = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${auth}`,
+          },
+          body,
+        });
         if (!mcRes.ok) {
           const mcErr = await mcRes.text();
-          logError('Mailchimp subscribe', new Error(mcErr));
+          logError("Mailchimp subscribe", new Error(mcErr));
         }
       } catch (mcError) {
-        logError('Mailchimp integration', mcError);
+        logError("Mailchimp integration", mcError);
       }
     }
 
     // Send confirmation email via SendGrid if configured, otherwise nodemailer transporter
     const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
     const sendConfirmation = async () => {
-      const subject = 'Welcome to the Essence newsletter!';
+      const subject = "Welcome to the Essence newsletter!";
       const html = `
         <h2>Welcome to the Blog!</h2>
         <p>Thanks for subscribing. You'll receive updates when new posts are published.</p>
@@ -662,71 +677,84 @@ app.post('/api/subscribe', async (req, res) => {
 
       if (SENDGRID_API_KEY && globalThis.fetch) {
         try {
-          await fetch('https://api.sendgrid.com/v3/mail/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SENDGRID_API_KEY}` },
+          await fetch("https://api.sendgrid.com/v3/mail/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SENDGRID_API_KEY}`,
+            },
             body: JSON.stringify({
               personalizations: [{ to: [{ email: sanitizedEmail }] }],
-              from: { email: process.env.EMAIL_FROM || 'no-reply@essence-blog.com', name: 'Essence' },
+              from: {
+                email: process.env.EMAIL_FROM || "no-reply@essence-blog.com",
+                name: "Essence",
+              },
               subject,
-              content: [{ type: 'text/html', value: html }]
-            })
+              content: [{ type: "text/html", value: html }],
+            }),
           });
         } catch (sgErr) {
-          logError('SendGrid send', sgErr);
+          logError("SendGrid send", sgErr);
         }
       } else {
         try {
-          await transporter.sendMail({ from: process.env.EMAIL_USER || 'your-email@gmail.com', to: sanitizedEmail, subject, html });
+          await transporter.sendMail({
+            from: process.env.EMAIL_USER || "your-email@gmail.com",
+            to: sanitizedEmail,
+            subject,
+            html,
+          });
         } catch (mailErr) {
-          logError('Email send', mailErr);
+          logError("Email send", mailErr);
         }
       }
     };
 
     sendConfirmation().catch(() => {});
 
-    res.json({ success: true, message: 'Subscribed successfully' });
+    res.json({ success: true, message: "Subscribed successfully" });
   } catch (error) {
-    logError('Subscribe', error);
-    res.status(500).json({ error: 'Failed to subscribe' });
+    logError("Subscribe", error);
+    res.status(500).json({ error: "Failed to subscribe" });
   }
 });
 
 // Start server
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const ADMIN_TOKEN = 'essence-admin-token-2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_TOKEN = "essence-admin-token-2026";
 
 // ==========================================
 // USER AUTHENTICATION
 // ==========================================
 
 // Register new user
-app.post('/api/auth/register', async (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   try {
     const { username, email, password, confirmPassword } = req.body;
 
     // Validation
     if (!username || !email || !password || !confirmPassword) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({ error: "All fields are required" });
     }
 
     if (password !== confirmPassword) {
-      return res.status(400).json({ error: 'Passwords do not match' });
+      return res.status(400).json({ error: "Passwords do not match" });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters" });
     }
 
-    if (!email.includes('@')) {
-      return res.status(400).json({ error: 'Invalid email address' });
+    if (!email.includes("@")) {
+      return res.status(400).json({ error: "Invalid email address" });
     }
 
     // Check if user already exists
-    const users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-    if (users.find(u => u.email === email || u.username === username)) {
-      return res.status(400).json({ error: 'User already exists' });
+    const users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
+    if (users.find((u) => u.email === email || u.username === username)) {
+      return res.status(400).json({ error: "User already exists" });
     }
 
     // Hash password
@@ -739,17 +767,21 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       password: hashedPassword,
       createdAt: new Date().toISOString(),
-      bio: '',
+      bio: "",
       avatar: null,
       posts: 0,
-      comments: 0
+      comments: 0,
     };
 
     users.push(newUser);
     fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
 
     // Generate token
-    const token = jwt.sign({ id: newUser.id, username: newUser.username, email: newUser.email }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(
+      { id: newUser.id, username: newUser.username, email: newUser.email },
+      JWT_SECRET,
+      { expiresIn: "30d" },
+    );
 
     res.status(201).json({
       success: true,
@@ -760,37 +792,41 @@ app.post('/api/auth/register', async (req, res) => {
         email: newUser.email,
         bio: newUser.bio,
         avatar: newUser.avatar,
-        createdAt: newUser.createdAt
-      }
+        createdAt: newUser.createdAt,
+      },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to register user' });
+    res.status(500).json({ error: "Failed to register user" });
   }
 });
 
 // Login user
-app.post('/api/auth/login', async (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
-    const users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-    const user = users.find(u => u.email === email);
+    const users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
+    const user = users.find((u) => u.email === email);
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ id: user.id, username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(
+      { id: user.id, username: user.username, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "30d" },
+    );
 
     res.json({
       success: true,
@@ -803,30 +839,30 @@ app.post('/api/auth/login', async (req, res) => {
         avatar: user.avatar,
         createdAt: user.createdAt,
         posts: user.posts,
-        comments: user.comments
-      }
+        comments: user.comments,
+      },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to login' });
+    res.status(500).json({ error: "Failed to login" });
   }
 });
 
 // Validate token
-app.post('/api/auth/validate', (req, res) => {
+app.post("/api/auth/validate", (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
+    const token = authHeader?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
+      return res.status(401).json({ error: "No token provided" });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    const users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-    const user = users.find(u => u.id === decoded.id);
+    const users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
+    const user = users.find((u) => u.id === decoded.id);
 
     if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+      return res.status(401).json({ error: "User not found" });
     }
 
     res.json({
@@ -838,22 +874,22 @@ app.post('/api/auth/validate', (req, res) => {
         bio: user.bio,
         avatar: user.avatar,
         posts: user.posts,
-        comments: user.comments
-      }
+        comments: user.comments,
+      },
     });
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: "Invalid token" });
   }
 });
 
 // Get user profile
-app.get('/api/users/:username', (req, res) => {
+app.get("/api/users/:username", (req, res) => {
   try {
-    const users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-    const user = users.find(u => u.username === req.params.username);
+    const users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
+    const user = users.find((u) => u.username === req.params.username);
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     res.json({
@@ -863,35 +899,35 @@ app.get('/api/users/:username', (req, res) => {
       avatar: user.avatar,
       createdAt: user.createdAt,
       posts: user.posts,
-      comments: user.comments
+      comments: user.comments,
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch user profile' });
+    res.status(500).json({ error: "Failed to fetch user profile" });
   }
 });
 
 // Update user profile
-app.put('/api/users/profile/:id', (req, res) => {
+app.put("/api/users/profile/:id", (req, res) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
+    const token = authHeader?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
+      return res.status(401).json({ error: "No token provided" });
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (decoded.id !== req.params.id) {
-      return res.status(403).json({ error: 'Not authorized' });
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     const { bio } = req.body;
-    const users = JSON.parse(fs.readFileSync(usersFile, 'utf8'));
-    const userIndex = users.findIndex(u => u.id === req.params.id);
+    const users = JSON.parse(fs.readFileSync(usersFile, "utf8"));
+    const userIndex = users.findIndex((u) => u.id === req.params.id);
 
     if (userIndex === -1) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: "User not found" });
     }
 
     users[userIndex].bio = bio || users[userIndex].bio;
@@ -904,11 +940,11 @@ app.put('/api/users/profile/:id', (req, res) => {
         username: users[userIndex].username,
         email: users[userIndex].email,
         bio: users[userIndex].bio,
-        avatar: users[userIndex].avatar
-      }
+        avatar: users[userIndex].avatar,
+      },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update profile' });
+    res.status(500).json({ error: "Failed to update profile" });
   }
 });
 
@@ -916,22 +952,22 @@ app.put('/api/users/profile/:id', (req, res) => {
 // ADMIN AUTHENTICATION
 // ==========================================
 
-app.post('/api/admin/login', (req, res) => {
+app.post("/api/admin/login", (req, res) => {
   const { password } = req.body;
   try {
-    const settingsRaw = fs.readFileSync(settingsFile, 'utf8');
-    const settings = JSON.parse(settingsRaw || '{}');
+    const settingsRaw = fs.readFileSync(settingsFile, "utf8");
+    const settings = JSON.parse(settingsRaw || "{}");
     const stored = settings.adminPassword || ADMIN_PASSWORD;
     if (password === stored) {
       res.json({ token: ADMIN_TOKEN });
     } else {
-      res.status(401).json({ error: 'Invalid password' });
+      res.status(401).json({ error: "Invalid password" });
     }
   } catch (err) {
     if (password === ADMIN_PASSWORD) {
       res.json({ token: ADMIN_TOKEN });
     } else {
-      res.status(401).json({ error: 'Invalid password' });
+      res.status(401).json({ error: "Invalid password" });
     }
   }
 });
@@ -939,65 +975,70 @@ app.post('/api/admin/login', (req, res) => {
 // Middleware to check admin token
 function verifyAdmin(req, res, next) {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(' ')[1];
-  
+  const token = authHeader?.split(" ")[1];
+
   if (token === ADMIN_TOKEN) {
     next();
   } else {
-    res.status(401).json({ error: 'Unauthorized' });
+    res.status(401).json({ error: "Unauthorized" });
   }
 }
-
-
 
 // ==========================================
 // ADMIN: SUBSCRIBERS MANAGEMENT
 // ==========================================
 
-app.get('/api/admin/subscribers', verifyAdmin, (req, res) => {
+app.get("/api/admin/subscribers", verifyAdmin, (req, res) => {
   try {
     const subscribers = readSubscribers();
-    const subscribersData = subscribers.map((s, index) => ({ email: s.email, date: s.date || new Date().toISOString(), id: index }));
+    const subscribersData = subscribers.map((s, index) => ({
+      email: s.email,
+      date: s.date || new Date().toISOString(),
+      id: index,
+    }));
     res.json(subscribersData);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch subscribers' });
+    res.status(500).json({ error: "Failed to fetch subscribers" });
   }
 });
 
-app.delete('/api/admin/subscribers/:id', verifyAdmin, (req, res) => {
+app.delete("/api/admin/subscribers/:id", verifyAdmin, (req, res) => {
   try {
     const { id } = req.params;
     const subscribers = readSubscribers();
     const idx = parseInt(id);
     if (isNaN(idx) || idx < 0 || idx >= subscribers.length) {
-      return res.status(404).json({ error: 'Subscriber not found' });
+      return res.status(404).json({ error: "Subscriber not found" });
     }
     subscribers.splice(idx, 1);
     writeSubscribers(subscribers);
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete subscriber' });
+    res.status(500).json({ error: "Failed to delete subscriber" });
   }
 });
 
 // Export subscribers as CSV (admin only)
-app.get('/api/admin/subscribers/export', verifyAdmin, (req, res) => {
+app.get("/api/admin/subscribers/export", verifyAdmin, (req, res) => {
   try {
     const subscribers = readSubscribers();
-    const rows = ['email,date'];
-    subscribers.forEach(s => {
-      const email = (typeof s === 'string') ? s : (s.email || '');
-      const date = (s && s.date) ? s.date : new Date().toISOString();
-      rows.push(`${String(email).replace(/,/g, '')},${date}`);
+    const rows = ["email,date"];
+    subscribers.forEach((s) => {
+      const email = typeof s === "string" ? s : s.email || "";
+      const date = s && s.date ? s.date : new Date().toISOString();
+      rows.push(`${String(email).replace(/,/g, "")},${date}`);
     });
 
-    const csv = rows.join('\n');
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="subscribers.csv"');
+    const csv = rows.join("\n");
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="subscribers.csv"',
+    );
     res.send(csv);
   } catch (error) {
-    console.error('Export subscribers error:', error);
-    res.status(500).json({ error: 'Failed to export subscribers' });
+    console.error("Export subscribers error:", error);
+    res.status(500).json({ error: "Failed to export subscribers" });
   }
 });
 
@@ -1005,194 +1046,130 @@ app.get('/api/admin/subscribers/export', verifyAdmin, (req, res) => {
 // ADMIN: SETTINGS
 // ==========================================
 
-app.post('/api/admin/settings', verifyAdmin, (req, res) => {
+app.post("/api/admin/settings", verifyAdmin, (req, res) => {
   try {
     const { title, description, password } = req.body;
 
-    const current = JSON.parse(fs.readFileSync(settingsFile, 'utf8') || '{}');
+    const current = JSON.parse(fs.readFileSync(settingsFile, "utf8") || "{}");
     const updated = {
-      title: title || current.title || 'Essence',
-      description: description || current.description || '',
-      adminPassword: password ? password : (current.adminPassword || ADMIN_PASSWORD)
+      title: title || current.title || "Essence",
+      description: description || current.description || "",
+      adminPassword: password
+        ? password
+        : current.adminPassword || ADMIN_PASSWORD,
     };
 
-    fs.writeFileSync(settingsFile, JSON.stringify(updated, null, 2), 'utf8');
+    fs.writeFileSync(settingsFile, JSON.stringify(updated, null, 2), "utf8");
 
     // Update runtime admin password so login uses new value immediately
-    try { global.ADMIN_PASSWORD = updated.adminPassword; } catch (e) {}
+    try {
+      global.ADMIN_PASSWORD = updated.adminPassword;
+    } catch (e) {}
 
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update settings' });
+    res.status(500).json({ error: "Failed to update settings" });
   }
 });
 
 // Admin: get current settings
-app.get('/api/admin/settings', verifyAdmin, (req, res) => {
+app.get("/api/admin/settings", verifyAdmin, (req, res) => {
   try {
-    const current = JSON.parse(fs.readFileSync(settingsFile, 'utf8') || '{}');
-    res.json({ title: current.title || 'Essence', description: current.description || '', adminPassword: !!current.adminPassword });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to read settings' });
-  }
-});
-
-// ==========================================
-// IMAGE UPLOAD ENDPOINTS
-// ==========================================
-
-app.post('/api/admin/upload', verifyAdmin, upload.single('image'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image provided' });
-    }
-
-    const imageData = {
-      id: uuidv4(),
-      filename: req.file.filename,
-      originalname: req.file.originalname,
-      url: `/uploads/${req.file.filename}`,
-      size: req.file.size,
-      uploadedAt: new Date().toISOString()
-    };
-
-    res.json(imageData);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to upload image' });
-  }
-});
-
-// PUBLIC: Get all images (no auth required)
-app.get('/api/images', (req, res) => {
-  try {
-    const files = fs.readdirSync(uploadsDir);
-    const images = files.map(filename => {
-      const filepath = path.join(uploadsDir, filename);
-      const stat = fs.statSync(filepath);
-      return {
-        id: filename,
-        filename,
-        url: `/uploads/${filename}`,
-        size: stat.size,
-        uploadedAt: stat.birthtime.toISOString()
-      };
+    const current = JSON.parse(fs.readFileSync(settingsFile, "utf8") || "{}");
+    res.json({
+      title: current.title || "Essence",
+      description: current.description || "",
+      adminPassword: !!current.adminPassword,
     });
-
-    res.json(images);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch images' });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to read settings" });
   }
 });
 
 // Dynamic RSS feed generated from posts/*.html
-app.get('/rss.xml', (req, res) => {
+app.get("/rss.xml", (req, res) => {
   try {
-    const postsDir = path.join(__dirname, 'posts');
+    const postsDir = path.join(__dirname, "posts");
     if (!fs.existsSync(postsDir)) {
-      return res.status(404).send('No posts directory');
+      return res.status(404).send("No posts directory");
     }
 
-    const files = fs.readdirSync(postsDir).filter(f => f.endsWith('.html'));
+    const files = fs.readdirSync(postsDir).filter((f) => f.endsWith(".html"));
 
-    const items = files.map(filename => {
+    const items = files.map((filename) => {
       const fullPath = path.join(postsDir, filename);
-      const content = fs.readFileSync(fullPath, 'utf8');
+      const content = fs.readFileSync(fullPath, "utf8");
 
       // Extract title
       let titleMatch = content.match(/<title>([^<]+)<\/title>/i);
-      const title = (titleMatch && titleMatch[1]) ? titleMatch[1].trim() : filename;
+      const title =
+        titleMatch && titleMatch[1] ? titleMatch[1].trim() : filename;
 
       // Try meta description
-      let descMatch = content.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']\s*\/>/i);
+      let descMatch = content.match(
+        /<meta\s+name=["']description["']\s+content=["']([^"']+)["']\s*\/>/i,
+      );
       if (!descMatch) {
         // fallback to og:description
-        descMatch = content.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']\s*\/>/i);
+        descMatch = content.match(
+          /<meta\s+property=["']og:description["']\s+content=["']([^"']+)["']\s*\/>/i,
+        );
       }
-      const description = (descMatch && descMatch[1]) ? descMatch[1].trim() : '';
+      const description = descMatch && descMatch[1] ? descMatch[1].trim() : "";
 
       // Try to find a datePublished in JSON-LD
       let dateMatch = content.match(/"datePublished"\s*:\s*"([^"]+)"/i);
-      let pubDate = dateMatch ? new Date(dateMatch[1]) : fs.statSync(fullPath).birthtime;
+      let pubDate = dateMatch
+        ? new Date(dateMatch[1])
+        : fs.statSync(fullPath).birthtime;
 
       return {
         title,
         link: `https://essence-blog.com/posts/${filename}`,
         description,
         pubDate: new Date(pubDate).toUTCString(),
-        guid: `https://essence-blog.com/posts/${filename}`
+        guid: `https://essence-blog.com/posts/${filename}`,
       };
     });
 
-    const channelTitle = 'Essence';
-    const channelLink = 'https://essence-blog.com/';
-    const channelDesc = 'A modern blog with insights, stories, and ideas on technology and design.';
+    const channelTitle = "Essence";
+    const channelLink = "https://essence-blog.com/";
+    const channelDesc =
+      "A modern blog with insights, stories, and ideas on technology and design.";
 
     let rss = `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0">\n  <channel>\n    <title>${channelTitle}</title>\n    <link>${channelLink}</link>\n    <description>${channelDesc}</description>\n    <language>en-us</language>\n    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n`;
 
-    items.forEach(item => {
+    items.forEach((item) => {
       rss += `\n    <item>\n      <title>${escapeXml(item.title)}</title>\n      <link>${item.link}</link>\n      <description>${escapeXml(item.description)}</description>\n      <pubDate>${item.pubDate}</pubDate>\n      <guid>${item.guid}</guid>\n    </item>\n`;
     });
 
-    rss += '  </channel>\n</rss>';
+    rss += "  </channel>\n</rss>";
 
-    res.set('Content-Type', 'application/rss+xml');
+    res.set("Content-Type", "application/rss+xml");
     res.send(rss);
   } catch (error) {
-    console.error('Failed to generate RSS:', error);
-    res.status(500).send('Failed to generate RSS');
+    console.error("Failed to generate RSS:", error);
+    res.status(500).send("Failed to generate RSS");
   }
 });
 
 function escapeXml(unsafe) {
-  if (!unsafe) return '';
+  if (!unsafe) return "";
   return unsafe.replace(/[<>&'\"]/g, function (c) {
     switch (c) {
-      case '<': return '&lt;';
-      case '>': return '&gt;';
-      case '&': return '&amp;';
-      case '\'': return '&apos;';
-      case '"': return '&quot;';
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case "&":
+        return "&amp;";
+      case "'":
+        return "&apos;";
+      case '"':
+        return "&quot;";
     }
   });
 }
-
-// ADMIN: Get all images (admin only)
-app.get('/api/admin/images', verifyAdmin, (req, res) => {
-  try {
-    const files = fs.readdirSync(uploadsDir);
-    const images = files.map(filename => {
-      const filepath = path.join(uploadsDir, filename);
-      const stat = fs.statSync(filepath);
-      return {
-        id: filename,
-        filename,
-        url: `/uploads/${filename}`,
-        size: stat.size,
-        uploadedAt: stat.birthtime.toISOString()
-      };
-    });
-
-    res.json(images);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch images' });
-  }
-});
-
-app.delete('/api/admin/images/:filename', verifyAdmin, (req, res) => {
-  try {
-    const filename = req.params.filename;
-    const filepath = path.join(uploadsDir, filename);
-
-    if (!fs.existsSync(filepath)) {
-      return res.status(404).json({ error: 'Image not found' });
-    }
-
-    fs.unlinkSync(filepath);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete image' });
-  }
-});
 
 // ==========================================
 // ANALYTICS & STATS ENDPOINTS
@@ -1202,44 +1179,44 @@ app.delete('/api/admin/images/:filename', verifyAdmin, (req, res) => {
 const analyticsStore = {
   pageViews: [],
   events: [],
-  sessions: new Map()
+  sessions: new Map(),
 };
 
 // Public: submit analytics
-app.post('/api/analytics', (req, res) => {
+app.post("/api/analytics", (req, res) => {
   try {
     const { sessionId, pageViews, events } = req.body;
-    
+
     if (pageViews) {
       analyticsStore.pageViews.push(...pageViews);
     }
-    
+
     if (events) {
       analyticsStore.events.push(...events);
     }
-    
+
     if (sessionId) {
       analyticsStore.sessions.set(sessionId, {
         createdAt: new Date().toISOString(),
         pageCount: pageViews?.length || 0,
-        eventCount: events?.length || 0
+        eventCount: events?.length || 0,
       });
     }
-    
-    res.json({ success: true, message: 'Analytics recorded' });
+
+    res.json({ success: true, message: "Analytics recorded" });
   } catch (error) {
-    logError('Analytics', error);
-    res.status(500).json({ error: 'Failed to record analytics' });
+    logError("Analytics", error);
+    res.status(500).json({ error: "Failed to record analytics" });
   }
 });
 
 // Admin: get dashboard statistics
-app.get('/api/admin/stats', verifyAdmin, (req, res) => {
+app.get("/api/admin/stats", verifyAdmin, (req, res) => {
   try {
     const posts = readPosts();
     const comments = readComments();
     const subscribers = readSubscribers();
-    
+
     // Calculate stats
     const stats = {
       totalPosts: posts.length,
@@ -1251,29 +1228,29 @@ app.get('/api/admin/stats', verifyAdmin, (req, res) => {
       recentPosts: posts.slice(0, 5),
       recentComments: comments.slice(0, 5),
       topCategories: getTopCategories(posts),
-      pageViewTrend: getPageViewTrend()
+      pageViewTrend: getPageViewTrend(),
     };
-    
+
     res.json(stats);
   } catch (error) {
-    logError('Admin stats', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    logError("Admin stats", error);
+    res.status(500).json({ error: "Failed to fetch stats" });
   }
 });
 
 // Admin: get analytics details
-app.get('/api/admin/analytics', verifyAdmin, (req, res) => {
+app.get("/api/admin/analytics", verifyAdmin, (req, res) => {
   try {
     const pageViewsByPage = {};
-    analyticsStore.pageViews.forEach(view => {
+    analyticsStore.pageViews.forEach((view) => {
       pageViewsByPage[view.page] = (pageViewsByPage[view.page] || 0) + 1;
     });
-    
+
     const eventsByType = {};
-    analyticsStore.events.forEach(event => {
+    analyticsStore.events.forEach((event) => {
       eventsByType[event.name] = (eventsByType[event.name] || 0) + 1;
     });
-    
+
     res.json({
       pageViews: analyticsStore.pageViews.length,
       pageViewsByPage,
@@ -1283,23 +1260,23 @@ app.get('/api/admin/analytics', verifyAdmin, (req, res) => {
       topPages: Object.entries(pageViewsByPage)
         .map(([page, count]) => ({ page, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10)
+        .slice(0, 10),
     });
   } catch (error) {
-    logError('Admin analytics', error);
-    res.status(500).json({ error: 'Failed to fetch analytics' });
+    logError("Admin analytics", error);
+    res.status(500).json({ error: "Failed to fetch analytics" });
   }
 });
 
 // Helper: get top categories
 function getTopCategories(posts) {
   const categories = {};
-  posts.forEach(post => {
+  posts.forEach((post) => {
     if (post.category) {
       categories[post.category] = (categories[post.category] || 0) + 1;
     }
   });
-  
+
   return Object.entries(categories)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
@@ -1313,31 +1290,29 @@ function getPageViewTrend() {
     const date = new Date();
     date.setDate(date.getDate() - i);
     trend.push({
-      date: date.toISOString().split('T')[0],
-      views: Math.floor(Math.random() * 100) + 20
+      date: date.toISOString().split("T")[0],
+      views: Math.floor(Math.random() * 100) + 20,
     });
   }
   return trend;
 }
 
 // Public: get related posts by category
-app.get('/api/posts/related/:category', (req, res) => {
+app.get("/api/posts/related/:category", (req, res) => {
   try {
     const { category } = req.params;
     const posts = readPosts();
-    
-    const related = posts
-      .filter(p => p.category === category)
-      .slice(0, 3);
-    
+
+    const related = posts.filter((p) => p.category === category).slice(0, 3);
+
     if (related.length === 0) {
       return res.json(posts.slice(0, 3)); // Return random posts if no related found
     }
-    
+
     res.json(related);
   } catch (error) {
-    logError('Related posts', error);
-    res.status(500).json({ error: 'Failed to fetch related posts' });
+    logError("Related posts", error);
+    res.status(500).json({ error: "Failed to fetch related posts" });
   }
 });
 
