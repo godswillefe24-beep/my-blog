@@ -205,7 +205,7 @@
     </header>
 
     <!-- Navigation Menu -->
-    <nav class="main-nav">
+    <nav class="main-nav" aria-label="Main Navigation">
       <div class="nav-container">
         <a href="index.html" class="nav-link active">Home</a>
         <a href="about.html" class="nav-link">About</a>
@@ -231,11 +231,7 @@
               renewable energy, and cybersecurity.
             </p>
             <div class="share-buttons">
-              <button
-                class="share-btn"
-                data-share="twitter"
-                title="Share on Twitter"
-              >
+              <button class="share-btn" data-share="X" title="Share on X">
                 𝕏
               </button>
               <button
@@ -256,7 +252,11 @@
                 🔗
               </button>
             </div>
-            <a href="posts/post2.html" class="read-more">Read Full Article →</a>
+            <a
+              href="posts/post2.html"
+              aria-label="Read full article: Welcome to my blog"
+              >Read Full Article →</a
+            >
           </div>
           <div class="featured-visual">
             <img
@@ -429,24 +429,6 @@
 
         <!-- Sidebar -->
         <aside class="sidebar">
-          <div class="sidebar-widget">
-            <h3>📊 Blog Analytics</h3>
-            <div class="analytics-stats">
-              <div class="stat">
-                <div class="stat-number" id="total-posts">4</div>
-                <div class="stat-label">Total Posts</div>
-              </div>
-              <div class="stat">
-                <div class="stat-number" id="total-likes">0</div>
-                <div class="stat-label">Total Likes</div>
-              </div>
-              <div class="stat">
-                <div class="stat-number" id="total-subscribers">0</div>
-                <div class="stat-label">Subscribers</div>
-              </div>
-            </div>
-          </div>
-
           <div class="sidebar-widget">
             <h3>📝 Recent Posts</h3>
             <div class="recent-posts-list" id="recent-posts">

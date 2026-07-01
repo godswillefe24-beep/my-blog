@@ -35,7 +35,6 @@
             📊 Overview
           </button>
           <button class="nav-btn" data-section="posts">📝 Posts</button>
-          <button class="nav-btn" data-section="media">🖼️ Media</button>
           <button class="nav-btn" data-section="comments">💬 Comments</button>
           <button class="nav-btn" data-section="subscribers">
             📧 Subscribers
@@ -118,23 +117,6 @@
             <button id="save-settings-btn" class="btn">Save Settings</button>
           </div>
         </section>
-
-        <!-- Media Gallery Section -->
-        <section id="media" class="section">
-          <div class="section-header">
-            <h1>Media Gallery</h1>
-            <label class="btn">
-              📤 Upload Image
-              <input
-                type="file"
-                id="media-upload"
-                accept="image/*"
-                style="display: none"
-              />
-            </label>
-          </div>
-          <div id="media-gallery" class="gallery-grid"></div>
-        </section>
       </main>
     </div>
 
@@ -146,6 +128,7 @@
           <button class="modal-close">&times;</button>
         </div>
         <form id="post-form">
+          <input type="hidden" id="edit-post-id" value="" />
           <div class="form-group">
             <label>Title</label>
             <input type="text" id="post-title" required />
@@ -156,19 +139,18 @@
               <option>Technology</option>
               <option>Thoughts</option>
               <option>Tutorial</option>
+              <option>Code</option>
+              <option>Writing</option>
+              <option>Ideas</option>
+              <option>Design</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label>Featured Image</label>
-            <input type="file" id="post-image" accept="image/*" />
-            <small>Optional: Upload a featured image for this post</small>
           </div>
           <div class="form-group">
             <label>Content</label>
             <textarea id="post-content" rows="6" required></textarea>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn">Save Post</button>
+            <button type="submit" class="btn" id="submit-btn">Save Post</button>
             <button type="button" class="btn btn-secondary modal-close">
               Cancel
             </button>
