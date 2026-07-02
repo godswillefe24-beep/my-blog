@@ -37,20 +37,20 @@
 }
 
 .btn-secondary:hover {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: white;
+  border-color: var(--accent-btn);
+  background: var(--accent-btn);
+  color: #ffffff;
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--accent);
-  border: 2px solid var(--accent);
+  color: var(--accent-btn);
+  border: 2px solid var(--accent-btn);
 }
 
 .btn-outline:hover {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-btn);
+  color: #ffffff;
 }
 
 /* BADGE STYLES */
@@ -65,18 +65,18 @@
 }
 
 .badge-primary {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--accent-dark);
+  background: rgba(29, 78, 216, 0.12);
+  color: #1d4ed8;
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--success);
+  background: rgba(4, 120, 87, 0.12);
+  color: #047857;
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--warning);
+  background: rgba(180, 83, 9, 0.14);
+  color: #b45309;
 }
 
 /* CARD COMPONENTS */
