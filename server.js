@@ -15,6 +15,7 @@ const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
+const HOST = process.env.HOST || "0.0.0.0";
 
 function loadEnvFile() {
   const envFile = path.join(__dirname, ".env");
@@ -1358,7 +1359,7 @@ app.get("/api/posts/related/:category", (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Blog server running on http://localhost:${PORT}`);
-  console.log(`Admin dashboard: http://localhost:${PORT}/admin.html`);
+app.listen(PORT, HOST, () => {
+  console.log(`Blog server running on http://${HOST}:${PORT}`);
+  console.log(`Admin dashboard: http://${HOST}:${PORT}/admin.html`);
 });
