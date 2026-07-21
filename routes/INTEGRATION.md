@@ -58,6 +58,15 @@ recent post about?" — it should retrieve relevant post excerpts and answer usi
 General questions (e.g. "what's a good way to structure a blog post?") will get a normal
 assistant answer with no sources cited.
 
+## Streaming upgrade — one infra note (confidence ~85%)
+The route now uses Server-Sent Events, holding the HTTP connection open until the full
+reply finishes generating. If you deploy behind Render's free tier, this should work fine
+for typical reply lengths (a few seconds), but if you ever put a reverse proxy or CDN in
+front of the app with an aggressive idle-timeout or response-buffering setting, streaming
+can break silently (client just waits, then times out). If replies stop streaming smoothly
+after a deploy, that proxy-buffering interaction is the first thing to check — not the
+Groq call itself.
+
 ## Notes / things I'm not 100% certain about (confidence ~70-80%)
 - **Your exact posts.json schema** — I don't have your actual file, so the retrieval code
   guesses at common field names. Test with a content-specific question first; if it never

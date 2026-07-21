@@ -1,7 +1,8 @@
-// routes/chat.js  (ES Module version — matches "type": "module" in package.json)
+// routes/chat.js  (ES Module — matches "type": "module" in package.json)
 //
 // AI chatbot endpoint for Essence, powered by Groq's free API
 // (open-source models: Llama 3.3, hosted for free at api.groq.com).
+// Streams the reply to the client as it's generated.
 //
 // Setup:
 //   1. npm install express-rate-limit   (skip if already installed)
@@ -28,13 +29,20 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const POSTS_PATH = path.join(__dirname, "..", "data", "posts.json");
 
-// Groq's free tier is ~30 req/min org-wide. We rate-limit our own endpoint
-// more conservatively per-IP so one visitor can't exhaust your daily quota
-// (free tier is roughly 1,000 requests/day as of mid-2026 — check
-// console.groq.com for your account's current limits).
+// Excerpt length sent to the model per matched post. 2,500 chars ≈ 600-650
+// tokens. At 3 posts max that's ~1,900 tokens of context — well inside
+// Groq's free-tier ~12,000 tokens/min limit, and enough to catch facts
+// beyond just a post's intro paragraph.
+const EXCERPT_LENGTH = 2500;
+const MAX_MATCHED_POSTS = 3;
+// A post needs at least this score to be considered "relevant" — a single
+// incidental keyword match (score 1) no longer qualifies, which was
+// causing wrong-post citations.
+const MIN_RELEVANCE_SCORE = 2;
+
 const chatLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 8, // 8 messages per minute per IP
+  windowMs: 60 * 1000,
+  max: 8,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -48,7 +56,6 @@ function loadPosts() {
   try {
     const raw = fs.readFileSync(POSTS_PATH, "utf-8");
     const data = JSON.parse(raw);
-    // Support either { posts: [...] } or a bare array
     return Array.isArray(data) ? data : data.posts || [];
   } catch (err) {
     console.error(
@@ -59,8 +66,6 @@ function loadPosts() {
   }
 }
 
-// Pull whatever text fields exist on a post, defensively — adjust these
-// field names if your posts.json uses different keys.
 function getPostText(post) {
   const title = post.title || "";
   const body = post.content || post.body || post.excerpt || post.summary || "";
@@ -75,7 +80,6 @@ function tokenize(str) {
     .filter((w) => w.length > 2);
 }
 
-// Simple TF-style keyword scoring: title matches weighted 3x over body matches.
 function scorePost(post, queryTerms) {
   const { title, body } = getPostText(post);
   const titleTokens = tokenize(title);
@@ -89,14 +93,14 @@ function scorePost(post, queryTerms) {
   return score;
 }
 
-function getRelevantPosts(query, limit = 3) {
+function getRelevantPosts(query, limit = MAX_MATCHED_POSTS) {
   const posts = loadPosts();
   const queryTerms = tokenize(query);
   if (queryTerms.length === 0 || posts.length === 0) return [];
 
   const scored = posts
     .map((post) => ({ post, score: scorePost(post, queryTerms) }))
-    .filter((p) => p.score > 0)
+    .filter((p) => p.score >= MIN_RELEVANCE_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
@@ -105,7 +109,7 @@ function getRelevantPosts(query, limit = 3) {
     return {
       title,
       slug: post.slug || post.id || "",
-      excerpt: body.slice(0, 500),
+      excerpt: body.slice(0, EXCERPT_LENGTH),
     };
   });
 }
@@ -157,8 +161,6 @@ router.post("/", chatLimiter, async (req, res) => {
     const relevantPosts = getRelevantPosts(message);
     const systemPrompt = buildSystemPrompt(relevantPosts);
 
-    // Keep only the last few turns of history to control token usage
-    // (Groq free tier is token-metered per minute too).
     const trimmedHistory = Array.isArray(history) ? history.slice(-6) : [];
 
     const messages = [
@@ -183,39 +185,97 @@ router.post("/", chatLimiter, async (req, res) => {
         messages,
         temperature: 0.5,
         max_tokens: 400,
+        stream: true,
       }),
     });
 
+    // Check for errors BEFORE switching into streaming mode, so we can
+    // still send a normal JSON error response with the right status code.
     if (!groqResponse.ok) {
       const errText = await groqResponse.text();
       console.error("Groq API error:", groqResponse.status, errText);
       if (groqResponse.status === 429) {
-        return res.status(429).json({
-          error:
-            "The AI chat is busy right now — please try again in a minute.",
-        });
+        return res
+          .status(429)
+          .json({
+            error:
+              "The AI chat is busy right now — please try again in a minute.",
+          });
       }
       return res
         .status(502)
         .json({ error: "The AI chat is temporarily unavailable." });
     }
 
-    const data = await groqResponse.json();
-    const reply = data?.choices?.[0]?.message?.content?.trim();
+    // --- From here on we're committed to a streaming response ---
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    if (typeof res.flushHeaders === "function") res.flushHeaders();
 
-    if (!reply) {
-      return res
-        .status(502)
-        .json({ error: "No response from the AI service." });
+    // Send the sources first so the widget can show them once streaming finishes.
+    res.write(
+      `data: ${JSON.stringify({
+        type: "sources",
+        sources: relevantPosts.map((p) => ({ title: p.title, slug: p.slug })),
+      })}\n\n`,
+    );
+
+    const reader = groqResponse.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop(); // keep any incomplete line for next chunk
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+
+        if (payload === "[DONE]") {
+          res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+          res.end();
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(payload);
+          const deltaText = parsed?.choices?.[0]?.delta?.content;
+          if (deltaText) {
+            res.write(
+              `data: ${JSON.stringify({ type: "delta", text: deltaText })}\n\n`,
+            );
+          }
+        } catch {
+          // Partial/incomplete JSON chunk — safe to ignore, next read() will complete it.
+        }
+      }
     }
 
-    return res.json({
-      reply,
-      sources: relevantPosts.map((p) => ({ title: p.title, slug: p.slug })),
-    });
+    // Stream ended without an explicit [DONE] marker (uncommon, but be safe).
+    res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+    res.end();
   } catch (err) {
     console.error("chat.js: unexpected error:", err);
-    return res.status(500).json({ error: "Something went wrong." });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Something went wrong." });
+    } else {
+      // We already switched to SSE mode — send an error event instead of a status code.
+      try {
+        res.write(
+          `data: ${JSON.stringify({ type: "error", message: "Something went wrong." })}\n\n`,
+        );
+      } catch {
+        // response may already be closed
+      }
+      res.end();
+    }
   }
 });
 

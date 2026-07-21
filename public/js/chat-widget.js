@@ -2,10 +2,9 @@
 //
 // Floating AI chat widget for Essence. Drop this <script> tag near the end
 // of index.html / about.html / post pages, along with chat-widget.css.
-// No dependencies, no build step.
+// No dependencies, no build step. Renders replies as they stream in.
 
 (function () {
-  const STORAGE_KEY = null; // intentionally not persisting chat across reloads (privacy-simple by default)
   const MAX_HISTORY_TURNS = 8;
 
   let history = [];
@@ -20,35 +19,35 @@
   }
 
   function buildWidget() {
-    const root = el('div', 'essence-chat-root');
+    const root = el("div", "essence-chat-root");
 
-    const bubble = el('button', 'essence-chat-bubble');
-    bubble.setAttribute('aria-label', 'Open chat assistant');
-    bubble.innerHTML = '💬';
+    const bubble = el("button", "essence-chat-bubble");
+    bubble.setAttribute("aria-label", "Open chat assistant");
+    bubble.innerHTML = "💬";
 
-    const panel = el('div', 'essence-chat-panel essence-chat-hidden');
+    const panel = el("div", "essence-chat-panel essence-chat-hidden");
 
-    const header = el('div', 'essence-chat-header');
-    const headerTitle = el('span', null, 'Ask Essence');
-    const closeBtn = el('button', 'essence-chat-close', '×');
-    closeBtn.setAttribute('aria-label', 'Close chat');
+    const header = el("div", "essence-chat-header");
+    const headerTitle = el("span", null, "Ask Essence");
+    const closeBtn = el("button", "essence-chat-close", "×");
+    closeBtn.setAttribute("aria-label", "Close chat");
     header.appendChild(headerTitle);
     header.appendChild(closeBtn);
 
-    const messages = el('div', 'essence-chat-messages');
+    const messages = el("div", "essence-chat-messages");
     const greeting = el(
-      'div',
-      'essence-chat-msg essence-chat-msg-assistant',
-      "Hi! I can answer questions about posts on this blog, or just chat. What's on your mind?"
+      "div",
+      "essence-chat-msg essence-chat-msg-assistant",
+      "Hi! I can answer questions about posts on this blog, or just chat. What's on your mind?",
     );
     messages.appendChild(greeting);
 
-    const inputRow = el('div', 'essence-chat-input-row');
-    const input = document.createElement('textarea');
-    input.className = 'essence-chat-input';
+    const inputRow = el("div", "essence-chat-input-row");
+    const input = document.createElement("textarea");
+    input.className = "essence-chat-input";
     input.rows = 1;
-    input.placeholder = 'Type a message…';
-    const sendBtn = el('button', 'essence-chat-send', 'Send');
+    input.placeholder = "Type a message…";
+    const sendBtn = el("button", "essence-chat-send", "Send");
 
     inputRow.appendChild(input);
     inputRow.appendChild(sendBtn);
@@ -61,29 +60,31 @@
     root.appendChild(bubble);
     document.body.appendChild(root);
 
-    bubble.addEventListener('click', () => togglePanel(panel));
-    closeBtn.addEventListener('click', () => togglePanel(panel, false));
+    bubble.addEventListener("click", () => togglePanel(panel));
+    closeBtn.addEventListener("click", () => togglePanel(panel, false));
 
-    sendBtn.addEventListener('click', () => sendMessage(input, messages, sendBtn));
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    sendBtn.addEventListener("click", () =>
+      sendMessage(input, messages, sendBtn),
+    );
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendMessage(input, messages, sendBtn);
       }
     });
-    input.addEventListener('input', () => {
-      input.style.height = 'auto';
-      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
     });
   }
 
   function togglePanel(panel, force) {
-    isOpen = typeof force === 'boolean' ? force : !isOpen;
-    panel.classList.toggle('essence-chat-hidden', !isOpen);
+    isOpen = typeof force === "boolean" ? force : !isOpen;
+    panel.classList.toggle("essence-chat-hidden", !isOpen);
   }
 
   function appendMessage(container, role, text) {
-    const msg = el('div', `essence-chat-msg essence-chat-msg-${role}`, text);
+    const msg = el("div", `essence-chat-msg essence-chat-msg-${role}`, text);
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
     return msg;
@@ -95,57 +96,127 @@
 
     isSending = true;
     sendBtn.disabled = true;
-    input.value = '';
-    input.style.height = 'auto';
+    input.value = "";
+    input.style.height = "auto";
 
-    appendMessage(messages, 'user', text);
-    const typingMsg = appendMessage(messages, 'assistant', 'Thinking…');
-    typingMsg.classList.add('essence-chat-typing');
+    appendMessage(messages, "user", text);
+    const replyMsg = appendMessage(messages, "assistant", "Thinking…");
+    replyMsg.classList.add("essence-chat-typing");
+
+    let fullText = "";
+    let sources = [];
+    let firstDeltaReceived = false;
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text, history }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        typingMsg.textContent = data.error || 'Something went wrong. Please try again.';
-        typingMsg.classList.remove('essence-chat-typing');
+      if (!response.ok) {
+        // Rate-limit / validation / server errors arrive as plain JSON,
+        // not a stream, since the server catches those before it starts streaming.
+        let errMsg = "Something went wrong. Please try again.";
+        try {
+          const errData = await response.json();
+          errMsg = errData.error || errMsg;
+        } catch {
+          // ignore parse failure, use default message
+        }
+        replyMsg.textContent = errMsg;
+        replyMsg.classList.remove("essence-chat-typing");
         isSending = false;
         sendBtn.disabled = false;
         return;
       }
 
-      typingMsg.textContent = data.reply;
-      typingMsg.classList.remove('essence-chat-typing');
+      if (!response.body || !response.body.getReader) {
+        throw new Error("Streaming not supported by this browser.");
+      }
 
-      if (data.sources && data.sources.length > 0) {
-        const sourcesEl = el('div', 'essence-chat-sources');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop(); // keep incomplete event for next chunk
+
+        for (const rawEvent of events) {
+          const line = rawEvent.trim();
+          if (!line.startsWith("data:")) continue;
+          const jsonStr = line.slice(5).trim();
+
+          let evt;
+          try {
+            evt = JSON.parse(jsonStr);
+          } catch {
+            continue;
+          }
+
+          if (evt.type === "sources") {
+            sources = evt.sources || [];
+          } else if (evt.type === "delta") {
+            if (!firstDeltaReceived) {
+              replyMsg.classList.remove("essence-chat-typing");
+              replyMsg.textContent = "";
+              firstDeltaReceived = true;
+            }
+            fullText += evt.text;
+            replyMsg.textContent = fullText;
+            messages.scrollTop = messages.scrollHeight;
+          } else if (evt.type === "error") {
+            replyMsg.textContent = evt.message || "Something went wrong.";
+            replyMsg.classList.remove("essence-chat-typing");
+          }
+          // 'done' needs no handling here — the loop just ends naturally.
+        }
+      }
+
+      if (!fullText) {
+        // Stream ended with nothing rendered (e.g. immediate error event).
+        replyMsg.classList.remove("essence-chat-typing");
+        if (!replyMsg.textContent || replyMsg.textContent === "Thinking…") {
+          replyMsg.textContent = "Didn't get a response — please try again.";
+        }
+      }
+
+      if (sources.length > 0) {
+        const sourcesEl = el("div", "essence-chat-sources");
         sourcesEl.textContent =
-          'Based on: ' + data.sources.map((s) => s.title).filter(Boolean).join(', ');
+          "Based on: " +
+          sources
+            .map((s) => s.title)
+            .filter(Boolean)
+            .join(", ");
         messages.appendChild(sourcesEl);
         messages.scrollTop = messages.scrollHeight;
       }
 
-      history.push({ role: 'user', content: text });
-      history.push({ role: 'assistant', content: data.reply });
-      if (history.length > MAX_HISTORY_TURNS * 2) {
-        history = history.slice(-MAX_HISTORY_TURNS * 2);
+      if (fullText) {
+        history.push({ role: "user", content: text });
+        history.push({ role: "assistant", content: fullText });
+        if (history.length > MAX_HISTORY_TURNS * 2) {
+          history = history.slice(-MAX_HISTORY_TURNS * 2);
+        }
       }
     } catch (err) {
-      typingMsg.textContent = "Couldn't reach the chat service. Please try again shortly.";
-      typingMsg.classList.remove('essence-chat-typing');
+      replyMsg.textContent =
+        "Couldn't reach the chat service. Please try again shortly.";
+      replyMsg.classList.remove("essence-chat-typing");
     } finally {
       isSending = false;
       sendBtn.disabled = false;
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', buildWidget);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", buildWidget);
   } else {
     buildWidget();
   }
