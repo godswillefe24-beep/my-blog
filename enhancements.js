@@ -219,7 +219,16 @@ function initializeSocialSharing() {
 // ====================================================
 
 function generateTableOfContents() {
-  const headings = document.querySelectorAll("h2, h3");
+  // Scoped to the article/main container the TOC gets inserted into, not
+  // the whole document — previously this scanned every h2/h3 on the page
+  // (nav, login modal, comments, post grid, etc.), which is harmless on a
+  // single-post page but produces a huge, irrelevant list on pages like
+  // index.html that contain many unrelated headings.
+  const article =
+    document.querySelector("article") || document.querySelector("main");
+  if (!article) return;
+
+  const headings = article.querySelectorAll("h2, h3");
 
   if (headings.length === 0) return;
 
@@ -245,11 +254,7 @@ function generateTableOfContents() {
   tocHTML += "</ul>";
   tocContainer.innerHTML = tocHTML;
 
-  const article =
-    document.querySelector("article") || document.querySelector("main");
-  if (article) {
-    article.insertAdjacentElement("afterbegin", tocContainer);
-  }
+  article.insertAdjacentElement("afterbegin", tocContainer);
 }
 
 // ====================================================
