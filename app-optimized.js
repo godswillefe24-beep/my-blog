@@ -598,7 +598,7 @@
     { title: "How Computers Are Made", url: "posts/post5.html", date: "2026-05-05" },
     { title: "The Biggest Tech Trends Defining 2026", url: "posts/post6.html", date: "2026-05-16" },
     { title: "Latest Technology Trends Shaping the Future in 2026", url: "posts/post7.html", date: "2026-05-16" },
-    { title: "Content is King: The Art of Great Writing", url: "posts/post8.html", date: "2026-05-01" },
+    { title: "The Art of Great Writing", url: "posts/post8.html", date: "2026-07-03" },
     { title: "Understanding Digital Marketing", url: "posts/post9.html", date: "2026-07-03" },
     { title: "AI Tools and Productivity", url: "posts/post10.html", date: "2026-07-04" },
     { title: "Gaming and Entertainment", url: "posts/post11.html", date: "2026-07-07" },
