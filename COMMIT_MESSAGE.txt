@@ -1,0 +1,65 @@
+Fix AI chat context, post metadata consistency, and site-wide audit fixes
+
+AI chat widget:
+- Widget now captures current page content (article/main text, capped at
+  4000 chars) and sends it as pageContext with every message
+- Backend prioritizes pageContext in the system prompt so "summarize this
+  post" and similar questions work correctly instead of falling back to
+  data/posts.json, which never contained the real posts (1-16) anyway
+
+Post pages (post1-16):
+- Fixed chat-widget.css/js paths missing '../' prefix (were resolving to
+  /posts/public/... instead of /public/...)
+- Added missing comment sections to post3-9, 11-16 (post1/2/10 already
+  had them); fixed post10's comments-section data-post-id, which
+  incorrectly collided with the homepage's featured-post comments
+- Fixed post11/post12 malformed HTML: missing </article>, missing
+  <aside class="sidebar">, and a duplicate nested <main> tag
+- Fixed title/h1 inconsistencies: post4 (title truncated), post5 (three
+  different title variants across the page), post13 (typo: "Busines"),
+  post16 (title missing second half)
+- Fixed post11/post12 h1s that concatenated two title fragments with no
+  separator
+- Fixed post14/15/16 site-header h1 showing generic "Essence" instead of
+  the actual post title (inconsistent with all other posts)
+- Added full SEO metadata (description, keywords, Open Graph, Twitter
+  Card, canonical link, JSON-LD BlogPosting schema) to the 13 posts that
+  were missing it
+- Fixed empty alt="" attributes on post2's 5 content images
+
+Homepage (index.html):
+- Added post9-16 to the posts grid
+- Added filter buttons for Writing, Marketing, Entertainment, Education,
+  Business (previously had no button despite being used as a category)
+- Fixed post5/post8 card titles and dates to match their actual post
+  pages instead of stale/incorrect homepage copy
+
+app-optimized.js:
+- Fixed case-sensitivity bug that made every category filter (except
+  "All Posts") hide all posts
+- Wired up Recent Posts and Popular Posts widgets, which were previously
+  unpopulated (index.html never loaded script.js, which is where their
+  logic originally lived)
+- Popular Posts now uses real view-count data from the existing
+  /api/analytics/view/:postId endpoint (was built server-side but never
+  called from any page)
+- Added POST_MANIFEST as the single source of truth for post titles/
+  dates/URLs across the Recent/Popular widgets, since data/posts.json
+  (the CMS) does not include the static posts
+
+script.js:
+- Added page-view tracking call to the existing (previously unused)
+  /api/analytics/view/:postId endpoint
+
+service-worker.js:
+- Added post9-16 to the precache list
+- Bumped CACHE_NAME (v1 -> v2) so existing visitors' service workers
+  pick up the updated file list instead of serving a stale cache
+
+sitemap.xml:
+- Added post5-16 (were missing entirely)
+- Corrected lastmod dates for post2, post3, post4, post8 to match the
+  dates actually shown on each post page
+
+Fixes: AI chat page-awareness, homepage filter/widget bugs, post9-16
+visibility, and a full consistency pass across post metadata.

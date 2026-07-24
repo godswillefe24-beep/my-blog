@@ -592,10 +592,10 @@
 
   const POST_MANIFEST = [
     { title: "Welcome to my blog", url: "posts/post1.html", date: "2025-11-26" },
-    { title: "Latest Technology News and Innovations", url: "posts/post2.html", date: "2025-11-26" },
-    { title: "Getting Started with Your Blog", url: "posts/post3.html", date: "2025-11-26" },
-    { title: "Advanced Customization Techniques", url: "posts/post4.html", date: "2025-11-26" },
-    { title: "How Computers Are Made", url: "posts/post5.html", date: "2026-05-05" },
+    { title: "Latest Technology News and Innovations", url: "posts/post2.html", date: "2026-03-01" },
+    { title: "Getting Started with Your Blog", url: "posts/post3.html", date: "2025-12-10" },
+    { title: "Advanced Customization Techniques", url: "posts/post4.html", date: "2026-01-15" },
+    { title: "How Computers Are Made (And Why It’s Just 0s and 1s)", url: "posts/post5.html", date: "2026-05-05" },
     { title: "The Biggest Tech Trends Defining 2026", url: "posts/post6.html", date: "2026-05-16" },
     { title: "Latest Technology Trends Shaping the Future in 2026", url: "posts/post7.html", date: "2026-05-16" },
     { title: "The Art of Great Writing", url: "posts/post8.html", date: "2026-07-03" },
