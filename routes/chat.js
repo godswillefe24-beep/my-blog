@@ -116,20 +116,35 @@ function getRelevantPosts(query, limit = MAX_MATCHED_POSTS) {
 
 // ---- Prompt construction -----------------------------------------------
 
-function buildSystemPrompt(relevantPosts) {
+function buildSystemPrompt(relevantPosts, pageContext) {
   let prompt =
     `You are a friendly, concise assistant embedded on a blog called Essence. ` +
-    `Answer visitor questions helpfully. If the visitor asks about the blog's content and ` +
-    `relevant excerpts are provided below, ground your answer in them and mention which post ` +
-    `it's from. If no excerpts are relevant, or the question is general, answer normally as a ` +
-    `helpful assistant. Keep answers under ~120 words unless asked for more detail. Do not ` +
-    `invent post titles or facts not supported by the excerpts.`;
+    `Answer visitor questions helpfully. Keep answers under ~120 words unless asked for more detail.`;
+
+  if (pageContext && pageContext.content) {
+    prompt +=
+      `\n\nThe visitor is currently reading this page:\n` +
+      `Title: "${pageContext.title}"\n` +
+      `URL: ${pageContext.url}\n` +
+      `Content:\n${pageContext.content}\n\n` +
+      `If the visitor asks you to summarize "this post", "this page", or asks a ` +
+      `question that's naturally about what they're currently reading, answer using ` +
+      `the content above — you do not need a database lookup for that, the content ` +
+      `is right here. Do not say you can't see the page; you can.`;
+  }
 
   if (relevantPosts.length > 0) {
-    prompt += `\n\nRelevant blog excerpts:\n`;
+    prompt += `\n\nRelevant blog excerpts from other posts (use if helpful for the visitor's question):\n`;
     relevantPosts.forEach((p, i) => {
       prompt += `\n[${i + 1}] "${p.title}"\n${p.excerpt}\n`;
     });
+  }
+
+  if (!pageContext?.content && relevantPosts.length === 0) {
+    prompt +=
+      `\n\nNo specific page or post content was provided for this message. ` +
+      `If asked to summarize "this post" and you have no content to summarize, say so ` +
+      `plainly and ask the visitor which post they mean, rather than guessing.`;
   }
 
   return prompt;
@@ -139,7 +154,7 @@ function buildSystemPrompt(relevantPosts) {
 
 router.post("/", chatLimiter, async (req, res) => {
   try {
-    const { message, history } = req.body || {};
+    const { message, history, pageContext } = req.body || {};
 
     if (
       !message ||
@@ -158,8 +173,28 @@ router.post("/", chatLimiter, async (req, res) => {
       return res.status(500).json({ error: "Chat is not configured yet." });
     }
 
+    // Defense in depth: the client already caps this, but don't trust it —
+    // cap again server-side before it goes anywhere near the prompt/token budget.
+    let safePageContext = null;
+    if (pageContext && typeof pageContext === "object") {
+      safePageContext = {
+        url:
+          typeof pageContext.url === "string"
+            ? pageContext.url.slice(0, 300)
+            : "",
+        title:
+          typeof pageContext.title === "string"
+            ? pageContext.title.slice(0, 300)
+            : "",
+        content:
+          typeof pageContext.content === "string"
+            ? pageContext.content.slice(0, 4000)
+            : "",
+      };
+    }
+
     const relevantPosts = getRelevantPosts(message);
-    const systemPrompt = buildSystemPrompt(relevantPosts);
+    const systemPrompt = buildSystemPrompt(relevantPosts, safePageContext);
 
     const trimmedHistory = Array.isArray(history) ? history.slice(-6) : [];
 
